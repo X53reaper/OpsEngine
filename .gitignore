@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.production
+.env.local
+*.log
+logs/
+screenshots/
+secrets/
+safarizetu-ops-engine/.env
+safarizetu-ops-engine/node_modules/
+safarizetu-ops-engine/dist/
+safarizetu-ops-engine/logs/
+safarizetu-ops-engine/secrets/
