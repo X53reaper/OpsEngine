@@ -1,0 +1,34 @@
+{
+  "name": "crewai",
+  "displayName": "CrewAI",
+  "version": "1.0.0",
+  "category": "multi-agent-frameworks",
+  "description": "Role-based crew members, used by 60%+ Fortune 500",
+  "longDescription": "Role-based crew members, used by 60%+ Fortune 500",
+  "pricing": "oss",
+  "url": "https://www.crewai.com",
+  "documentation": "",
+  "installCommand": "pip install crewai",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "role-based",
+    "crew-members",
+    "enterprise",
+    "collaborative"
+  ],
+  "useCases": [
+    {
+      "name": "Team Simulation",
+      "description": "Simulate expert teams for complex tasks",
+      "impact": "Fortune 500 adoption",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

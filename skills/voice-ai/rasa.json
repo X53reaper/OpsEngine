@@ -1,0 +1,34 @@
+{
+  "name": "rasa",
+  "displayName": "Rasa",
+  "version": "1.0.0",
+  "category": "voice-ai",
+  "description": "OSS conversational AI, self-hosted",
+  "longDescription": "OSS conversational AI, self-hosted",
+  "pricing": "oss",
+  "url": "https://rasa.com",
+  "documentation": "",
+  "installCommand": "pip install rasa",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "conversational-ai",
+    "self-hosted",
+    "enterprise",
+    "open-source"
+  ],
+  "useCases": [
+    {
+      "name": "Chatbot Development",
+      "description": "Build enterprise chatbots",
+      "impact": "Self-hosted control",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

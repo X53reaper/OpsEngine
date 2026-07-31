@@ -1,0 +1,34 @@
+{
+  "name": "aider",
+  "displayName": "Aider",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "Git-aware pair programmer, any LLM",
+  "longDescription": "Git-aware pair programmer, any LLM",
+  "pricing": "oss",
+  "url": "https://aider.chat",
+  "documentation": "",
+  "installCommand": "pip install aider-chat",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "git-aware",
+    "multi-llm",
+    "pair-programming",
+    "codebase-editing"
+  ],
+  "useCases": [
+    {
+      "name": "Pair Programming",
+      "description": "Collaborative coding with AI assistance",
+      "impact": "Faster development cycles",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

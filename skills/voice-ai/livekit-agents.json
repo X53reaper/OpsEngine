@@ -1,0 +1,34 @@
+{
+  "name": "livekit-agents",
+  "displayName": "LiveKit Agents",
+  "version": "1.0.0",
+  "category": "voice-ai",
+  "description": "OSS real-time voice/video AI agents",
+  "longDescription": "OSS real-time voice/video AI agents",
+  "pricing": "oss",
+  "url": "https://github.com/livekit/agents",
+  "documentation": "",
+  "installCommand": "pip install livekit-agents",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "real-time",
+    "voice",
+    "video",
+    "open-source"
+  ],
+  "useCases": [
+    {
+      "name": "Real-time Communication",
+      "description": "Build real-time voice/video agents",
+      "impact": "Open-source alternative",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

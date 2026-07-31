@@ -1,0 +1,34 @@
+{
+  "name": "codeium",
+  "displayName": "Codeium",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "Free AI code completion and chat",
+  "longDescription": "Free AI code completion and chat",
+  "pricing": "free",
+  "url": "https://codeium.com",
+  "documentation": "",
+  "installCommand": "code --install-extension Codeium.codeium",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "code-completion",
+    "chat",
+    "multi-ide",
+    "free-tier"
+  ],
+  "useCases": [
+    {
+      "name": "Code Completion",
+      "description": "Free AI-powered code suggestions",
+      "impact": "No cost productivity boost",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

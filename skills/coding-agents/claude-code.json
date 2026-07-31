@@ -1,0 +1,65 @@
+{
+  "name": "claude-code",
+  "displayName": "Claude Code",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "Anthropic CLI agent with best reasoning, 80.9% SWE-bench",
+  "longDescription": "Claude Code is Anthropic's official CLI coding agent. It provides best-in-class reasoning capabilities for complex coding tasks, with direct terminal integration and codebase understanding.",
+  "pricing": "saas",
+  "url": "https://docs.anthropic.com/en/docs/claude-code",
+  "documentation": "https://docs.anthropic.com/en/docs/claude-code",
+  "installCommand": "npm install -g @anthropic-ai/claude-code",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [
+    {
+      "name": "claude-execute",
+      "description": "Execute coding tasks with Claude's reasoning",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task": {"type": "string"},
+          "files": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["task"]
+      }
+    }
+  ],
+  "capabilities": [
+    "cli-integration",
+    "deep-reasoning",
+    "codebase-analysis",
+    "terminal-commands",
+    "git-operations",
+    "test-generation"
+  ],
+  "useCases": [
+    {
+      "name": "Complex Bug Fixes",
+      "description": "Debug and fix complex multi-file issues",
+      "impact": "80.9% SWE-bench score, best reasoning",
+      "complexity": "high"
+    },
+    {
+      "name": "Architecture Design",
+      "description": "Design system architecture with detailed explanations",
+      "impact": "Better architectural decisions",
+      "complexity": "high"
+    }
+  ],
+  "integrations": ["terminal", "git", "github", "anthropic-api"],
+  "requirements": {
+    "node": ">=18.0.0",
+    "python": null,
+    "docker": false
+  },
+  "examples": [
+    {
+      "name": "Fix race condition",
+      "task": "Find and fix the race condition in the async data fetching code",
+      "files": ["src/api.ts", "src/hooks/useData.ts"]
+    }
+  ],
+  "relatedAgents": ["cursor", "aider", "devin"]
+}

@@ -1,0 +1,34 @@
+{
+  "name": "tabnine",
+  "displayName": "Tabnine",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "AI code assistant with privacy focus",
+  "longDescription": "AI code assistant with privacy focus",
+  "pricing": "saas",
+  "url": "https://www.tabnine.com",
+  "documentation": "",
+  "installCommand": "code --install-extension Tabnine.tabnine-vscode",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "code-completion",
+    "privacy",
+    "self-hosted",
+    "enterprise"
+  ],
+  "useCases": [
+    {
+      "name": "Enterprise Coding",
+      "description": "Private AI code assistance",
+      "impact": "Secure code completion",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

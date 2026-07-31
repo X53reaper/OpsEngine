@@ -12,3 +12,24 @@ safarizetu-ops-engine/node_modules/
 safarizetu-ops-engine/dist/
 safarizetu-ops-engine/logs/
 safarizetu-ops-engine/secrets/
+*.exe
+safarizetu-ops-*.json
+env keys.txt
+apify_out.txt
+audit_output.txt
+*_output*.txt
+apify_config.txt
+check_email_status.py
+check_resend_config.py
+live_email_test.py
+send_corrected_email.py
+apify.txt
+check_email_content.py
+check_resend.py
+clean_email_test.py
+debug_email.py
+deploy_templates_send_test.py
+full_email_test.py
+test_resend2.py
+deploy_final.py
+deploy_templates_v2.py

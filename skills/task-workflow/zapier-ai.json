@@ -1,0 +1,34 @@
+{
+  "name": "zapier-ai",
+  "displayName": "Zapier AI",
+  "version": "1.0.0",
+  "category": "task-workflow",
+  "description": "AI-powered automation platform",
+  "longDescription": "AI-powered automation platform",
+  "pricing": "saas",
+  "url": "https://zapier.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "automation",
+    "ai-powered",
+    "integrations",
+    "no-code"
+  ],
+  "useCases": [
+    {
+      "name": "No-Code Automation",
+      "description": "Automate without coding",
+      "impact": "7000+ integrations",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

@@ -1,0 +1,34 @@
+{
+  "name": "jan",
+  "displayName": "Jan",
+  "version": "1.0.0",
+  "category": "local-selfhosted",
+  "description": "Open-source ChatGPT alternative",
+  "longDescription": "Open-source ChatGPT alternative",
+  "pricing": "oss",
+  "url": "https://jan.ai",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "chat-ui",
+    "open-source",
+    "local",
+    "private"
+  ],
+  "useCases": [
+    {
+      "name": "Private Chat",
+      "description": "Self-hosted ChatGPT alternative",
+      "impact": "Complete privacy",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

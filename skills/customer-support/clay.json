@@ -1,0 +1,34 @@
+{
+  "name": "clay",
+  "displayName": "Clay",
+  "version": "1.0.0",
+  "category": "customer-support",
+  "description": "Sales prospecting and enrichment platform",
+  "longDescription": "Sales prospecting and enrichment platform",
+  "pricing": "saas",
+  "url": "https://www.clay.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "prospecting",
+    "enrichment",
+    "sales",
+    "automation"
+  ],
+  "useCases": [
+    {
+      "name": "Sales Prospecting",
+      "description": "Automate sales outreach",
+      "impact": "Lead enrichment",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

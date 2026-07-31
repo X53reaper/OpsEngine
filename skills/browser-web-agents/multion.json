@@ -1,0 +1,34 @@
+{
+  "name": "multion",
+  "displayName": "MultiOn",
+  "version": "1.0.0",
+  "category": "browser-web-agents",
+  "description": "Reliable web automation API with CAPTCHA handling",
+  "longDescription": "Reliable web automation API with CAPTCHA handling",
+  "pricing": "saas",
+  "url": "https://www.multion.ai",
+  "documentation": "",
+  "installCommand": "pip install multion",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "api",
+    "captcha-handling",
+    "reliable",
+    "enterprise"
+  ],
+  "useCases": [
+    {
+      "name": "Enterprise Web Automation",
+      "description": "Reliable web automation with CAPTCHA bypass",
+      "impact": "Production-ready automation",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

@@ -1,0 +1,34 @@
+{
+  "name": "zendesk-ai",
+  "displayName": "Zendesk AI",
+  "version": "1.0.0",
+  "category": "customer-support",
+  "description": "AI-powered customer support platform",
+  "longDescription": "AI-powered customer support platform",
+  "pricing": "saas",
+  "url": "https://www.zendesk.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "ticketing",
+    "ai-powered",
+    "multi-channel",
+    "enterprise"
+  ],
+  "useCases": [
+    {
+      "name": "Ticket Automation",
+      "description": "Automate ticket resolution",
+      "impact": "Enterprise support",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

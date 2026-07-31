@@ -1,0 +1,34 @@
+{
+  "name": "autogen",
+  "displayName": "AutoGen",
+  "version": "1.0.0",
+  "category": "multi-agent-frameworks",
+  "description": "Microsoft multi-agent conversations",
+  "longDescription": "Microsoft multi-agent conversations",
+  "pricing": "oss",
+  "url": "https://github.com/microsoft/autogen",
+  "documentation": "",
+  "installCommand": "pip install autogen",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "microsoft",
+    "conversations",
+    "multi-agent",
+    "enterprise"
+  ],
+  "useCases": [
+    {
+      "name": "Multi-Agent Chat",
+      "description": "Build conversational agent systems",
+      "impact": "Microsoft backing",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

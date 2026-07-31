@@ -1,0 +1,34 @@
+{
+  "name": "openai-operator",
+  "displayName": "OpenAI Operator",
+  "version": "1.0.0",
+  "category": "browser-web-agents",
+  "description": "ChatGPT autonomous web agent with human checkpoints",
+  "longDescription": "ChatGPT autonomous web agent with human checkpoints",
+  "pricing": "saas",
+  "url": "https://openai.com/operator",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "autonomous-browsing",
+    "human-checkpoints",
+    "web-automation",
+    "chatgpt"
+  ],
+  "useCases": [
+    {
+      "name": "Web Automation",
+      "description": "Automate complex web tasks",
+      "impact": "Jump between tools at lightning speed",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

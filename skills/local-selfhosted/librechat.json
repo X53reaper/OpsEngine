@@ -1,0 +1,34 @@
+{
+  "name": "librechat",
+  "displayName": "LibreChat",
+  "version": "1.0.0",
+  "category": "local-selfhosted",
+  "description": "Enhanced ChatGPT clone with multi-user",
+  "longDescription": "Enhanced ChatGPT clone with multi-user",
+  "pricing": "oss",
+  "url": "https://github.com/danny-avila/LibreChat",
+  "documentation": "",
+  "installCommand": "docker compose up",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "chat-ui",
+    "multi-user",
+    "self-hosted",
+    "multi-model"
+  ],
+  "useCases": [
+    {
+      "name": "Team Chat",
+      "description": "Multi-user ChatGPT clone",
+      "impact": "Self-hosted team solution",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

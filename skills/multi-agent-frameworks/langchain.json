@@ -1,0 +1,35 @@
+{
+  "name": "langchain",
+  "displayName": "LangChain",
+  "version": "1.0.0",
+  "category": "multi-agent-frameworks",
+  "description": "Most adopted, modular architecture with memory/tools",
+  "longDescription": "Most adopted, modular architecture with memory/tools",
+  "pricing": "oss",
+  "url": "https://langchain.com",
+  "documentation": "",
+  "installCommand": "pip install langchain",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "modular",
+    "memory",
+    "tools",
+    "chains",
+    "agents"
+  ],
+  "useCases": [
+    {
+      "name": "Agent Development",
+      "description": "Build custom AI agents with memory",
+      "impact": "Most adopted framework",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

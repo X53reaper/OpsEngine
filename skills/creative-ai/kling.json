@@ -1,0 +1,34 @@
+{
+  "name": "kling",
+  "displayName": "Kling 3.0",
+  "version": "1.0.0",
+  "category": "creative-ai",
+  "description": "Advanced AI video generation",
+  "longDescription": "Advanced AI video generation",
+  "pricing": "saas",
+  "url": "https://kling.kuaishou.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "video-generation",
+    "high-quality",
+    "3.0",
+    "advanced"
+  ],
+  "useCases": [
+    {
+      "name": "Video Creation",
+      "description": "Generate AI videos",
+      "impact": "Advanced video generation",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

@@ -1,0 +1,34 @@
+{
+  "name": "v0",
+  "displayName": "v0 (Vercel)",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "Prompt-to-React/Tailwind components",
+  "longDescription": "Prompt-to-React/Tailwind components",
+  "pricing": "saas",
+  "url": "https://v0.dev",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "component-generation",
+    "react",
+    "tailwind",
+    "ui-design"
+  ],
+  "useCases": [
+    {
+      "name": "UI Component Generation",
+      "description": "Generate React components from descriptions",
+      "impact": "Instant frontend assembly",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

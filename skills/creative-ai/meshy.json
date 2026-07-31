@@ -1,0 +1,34 @@
+{
+  "name": "meshy",
+  "displayName": "Meshy",
+  "version": "1.0.0",
+  "category": "creative-ai",
+  "description": "AI 3D model generation",
+  "longDescription": "AI 3D model generation",
+  "pricing": "saas",
+  "url": "https://www.meshy.ai",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "3d-generation",
+    "models",
+    "textures",
+    "creative"
+  ],
+  "useCases": [
+    {
+      "name": "3D Modeling",
+      "description": "Generate 3D models",
+      "impact": "Rapid 3D creation",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

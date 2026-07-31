@@ -1,0 +1,34 @@
+{
+  "name": "bolt-new",
+  "displayName": "Bolt.new",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "Prompt-to-full-stack web app in browser",
+  "longDescription": "Prompt-to-full-stack web app in browser",
+  "pricing": "saas",
+  "url": "https://bolt.new",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "prompt-to-app",
+    "full-stack",
+    "browser-based",
+    "instant-deploy"
+  ],
+  "useCases": [
+    {
+      "name": "Rapid Prototyping",
+      "description": "Build full-stack apps from prompts",
+      "impact": "From idea to demo in minutes",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

@@ -1,0 +1,84 @@
+{
+  "name": "cursor",
+  "displayName": "Cursor",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "VS Code fork with multi-file edits, Claude/GPT/Gemini support",
+  "longDescription": "Cursor is a AI-first code editor built on VS Code with native AI capabilities. It supports multi-file edits, codebase-aware completions, and natural language commands across multiple LLM providers including Claude, GPT, and Gemini.",
+  "pricing": "saas",
+  "url": "https://cursor.sh",
+  "documentation": "https://docs.cursor.sh",
+  "installCommand": "winget install Cursor.Cursor",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [
+    {
+      "name": "cursor-edit",
+      "description": "Edit code using natural language instructions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "instruction": {
+            "type": "string",
+            "description": "Natural language instruction for code changes"
+          },
+          "files": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Files to modify"
+          }
+        },
+        "required": ["instruction"]
+      }
+    },
+    {
+      "name": "cursor-complete",
+      "description": "Get AI-powered code completions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "context": {"type": "string"},
+          "language": {"type": "string"}
+        }
+      }
+    }
+  ],
+  "capabilities": [
+    "multi-file-editing",
+    "codebase-aware",
+    "natural-language-commands",
+    "multi-llm-support",
+    "chat-with-codebase",
+    "generate-from-prompt"
+  ],
+  "useCases": [
+    {
+      "name": "Feature Implementation",
+      "description": "Convert requirements to multi-file code changes with git commits",
+      "impact": "70% time reduction on routine tasks",
+      "complexity": "medium"
+    },
+    {
+      "name": "Code Refactoring",
+      "description": "Refactor codebase using natural language instructions",
+      "impact": "Faster, more consistent refactoring",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": ["vscode", "git", "github", "claude", "openai", "gemini"],
+  "requirements": {
+    "node": null,
+    "python": null,
+    "docker": false,
+    "os": ["windows", "macos", "linux"]
+  },
+  "examples": [
+    {
+      "name": "Multi-file refactor",
+      "instruction": "Extract the authentication logic into a separate module with proper error handling",
+      "files": ["src/auth.ts", "src/middleware.ts", "src/routes.ts"]
+    }
+  ],
+  "relatedAgents": ["claude-code", "github-copilot", "cline", "aider"]
+}

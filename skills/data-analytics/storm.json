@@ -1,0 +1,34 @@
+{
+  "name": "storm",
+  "displayName": "STORM",
+  "version": "1.0.0",
+  "category": "data-analytics",
+  "description": "Stanford agent that writes Wikipedia-like articles",
+  "longDescription": "Stanford agent that writes Wikipedia-like articles",
+  "pricing": "oss",
+  "url": "https://github.com/stanford-oval/storm",
+  "documentation": "",
+  "installCommand": "pip install storm",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "article-generation",
+    "wikipedia-style",
+    "research",
+    "stanford"
+  ],
+  "useCases": [
+    {
+      "name": "Content Generation",
+      "description": "Generate Wikipedia-like articles",
+      "impact": "Automated content creation",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

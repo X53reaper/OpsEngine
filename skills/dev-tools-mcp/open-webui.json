@@ -1,0 +1,34 @@
+{
+  "name": "open-webui",
+  "displayName": "Open WebUI",
+  "version": "1.0.0",
+  "category": "dev-tools-mcp",
+  "description": "Self-hosted ChatGPT UI with access control",
+  "longDescription": "Self-hosted ChatGPT UI with access control",
+  "pricing": "oss",
+  "url": "https://github.com/open-webui/open-webui",
+  "documentation": "",
+  "installCommand": "docker run -d -p 3000:8080 ghcr.io/open-webui/open-webui:main",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "chat-ui",
+    "self-hosted",
+    "access-control",
+    "multi-user"
+  ],
+  "useCases": [
+    {
+      "name": "Team Chat",
+      "description": "Self-hosted ChatGPT alternative",
+      "impact": "Data privacy",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

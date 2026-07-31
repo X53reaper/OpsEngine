@@ -1,0 +1,39 @@
+ARG BUILD_TIME=now
+FROM node:20-slim
+
+WORKDIR /app
+
+# Install build tools + curl for health check + CA certificates for HTTPS
+# node:20-slim (Debian) already has gcc/g++ available via apt, much faster on low-power hardware
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Install dependencies ───────────────────────────────────────
+COPY package*.json ./
+RUN npm ci
+
+# ── Build TypeScript ───────────────────────────────────────────
+COPY tsconfig.json ./
+COPY src/ ./src/
+
+RUN npx tsc
+
+# ── Remove dev dependencies after build ───────────────────────
+RUN npm prune --omit=dev
+
+# ── Copy runtime assets ────────────────────────────────────────
+# Skills directory: domain knowledge markdown files used by agents
+COPY skills/ ./skills/
+
+# Create logs directory (mapped to Docker volume)
+RUN mkdir -p /app/logs
+
+# ── Health check ──────────────────────────────────────────────
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -sf http://localhost:3000/health || exit 1
+
+EXPOSE 3000
+
+CMD ["node", "dist/index.js"]
+# rebuild Fri Jun 19 17:41:44 UTC 2026

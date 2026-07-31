@@ -1,0 +1,34 @@
+{
+  "name": "axme",
+  "displayName": "AXME",
+  "version": "1.0.0",
+  "category": "agent-orchestration",
+  "description": "Durable coordination with crash recovery, kill switch",
+  "longDescription": "Durable coordination with crash recovery, kill switch",
+  "pricing": "oss",
+  "url": "https://github.com/axme/axme",
+  "documentation": "",
+  "installCommand": "pip install axme",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "durable",
+    "crash-recovery",
+    "kill-switch",
+    "enterprise"
+  ],
+  "useCases": [
+    {
+      "name": "Production Orchestration",
+      "description": "Durable agent coordination",
+      "impact": "Crash recovery",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

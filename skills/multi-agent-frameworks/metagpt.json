@@ -1,0 +1,34 @@
+{
+  "name": "metagpt",
+  "displayName": "MetaGPT",
+  "version": "1.0.0",
+  "category": "multi-agent-frameworks",
+  "description": "Simulates PM/architect/engineer roles for software",
+  "longDescription": "Simulates PM/architect/engineer roles for software",
+  "pricing": "oss",
+  "url": "https://github.com/geekan/MetaGPT",
+  "documentation": "",
+  "installCommand": "pip install metagpt",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "role-simulation",
+    "software-development",
+    "multi-role",
+    "documentation"
+  ],
+  "useCases": [
+    {
+      "name": "Software Development",
+      "description": "Simulate full dev team roles",
+      "impact": "End-to-end software creation",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

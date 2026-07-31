@@ -1,0 +1,34 @@
+{
+  "name": "langgraph",
+  "displayName": "LangGraph",
+  "version": "1.0.0",
+  "category": "multi-agent-frameworks",
+  "description": "Graph-based orchestration, stateful directed graphs",
+  "longDescription": "Graph-based orchestration, stateful directed graphs",
+  "pricing": "oss",
+  "url": "https://langchain-ai.github.io/langgraph/",
+  "documentation": "",
+  "installCommand": "pip install langgraph",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "graph-orchestration",
+    "stateful",
+    "visual",
+    "complex-workflows"
+  ],
+  "useCases": [
+    {
+      "name": "Complex Workflows",
+      "description": "Build stateful multi-agent systems",
+      "impact": "Visual workflow design",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

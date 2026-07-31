@@ -1,0 +1,34 @@
+{
+  "name": "manus",
+  "displayName": "Manus (Meta)",
+  "version": "1.0.0",
+  "category": "browser-web-agents",
+  "description": "Autonomous digital employee with browser extension",
+  "longDescription": "Autonomous digital employee with browser extension",
+  "pricing": "saas",
+  "url": "https://manus.meta.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "digital-employee",
+    "browser-extension",
+    "autonomous",
+    "multi-task"
+  ],
+  "useCases": [
+    {
+      "name": "Digital Employee",
+      "description": "Deploy autonomous web agent",
+      "impact": "24/7 web task execution",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

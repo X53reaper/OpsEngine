@@ -1,0 +1,1329 @@
+=== cd /opt/safarizetu-ops-engine && cat database/migrations/*.sql 2>/dev/null | tail -n +200 | head -300 ===
+-- ── APPROVAL QUEUE ────────────────────────────────────────────
+-- Everything AI drafts that needs founder review before sending
+CREATE TABLE IF NOT EXISTS approval_queue (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    item_type TEXT NOT NULL CHECK (item_type IN ('outreach_email','partnership_email','content','proposal','report')),
+    reference_id UUID,
+    title TEXT NOT NULL,
+    preview TEXT,
+    full_content TEXT NOT NULL,
+    priority TEXT DEFAULT 'normal' CHECK (priority IN ('urgent','high','normal','low')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','edited_and_approved')),
+    reviewed_at TIMESTAMPTZ,
+    reviewer_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_approval_status ON approval_queue(status);
+CREATE INDEX idx_approval_priority ON approval_queue(priority, created_at DESC);
+
+-- ── UPDATED_AT TRIGGER ────────────────────────────────────────
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_enquiry_log_updated_at BEFORE UPDATE ON enquiry_log FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_operator_activation_updated_at BEFORE UPDATE ON operator_activation_queue FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_lead_pipeline_updated_at BEFORE UPDATE ON lead_pipeline FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_partnership_pipeline_updated_at BEFORE UPDATE ON partnership_pipeline FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_content_queue_updated_at BEFORE UPDATE ON content_queue FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_approval_queue_updated_at BEFORE UPDATE ON approval_queue FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- ── SEED DATA — FASTJET PARTNERSHIP ───────────────────────────
+INSERT INTO partnership_pipeline (company_name, company_type, country, partnership_value_proposition, status)
+VALUES (
+    'FastJet',
+    'airline',
+    'Zimbabwe',
+    'Co-marketing integration: Safari Zetu featured on FastJet booking confirmation emails to ZW-bound passengers. FastJet flight search widget embedded on Safari Zetu destination pages. Mutual referral traffic and tourist journey completion.',
+    'identified'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO partnership_pipeline (company_name, company_type, country, partnership_value_proposition, status)
+VALUES (
+    'Air Zimbabwe',
+    'airline',
+    'Zimbabwe',
+    'National carrier partnership: official safari marketplace endorsement, co-marketing on Air Zimbabwe channels, potential bundled safari+flight packages for international tourists.',
+    'identified'
+) ON CONFLICT DO NOTHING;
+-- Safari Zetu Ops Engine — Feedback & Code Fix Pipeline
+-- Run after 001_initial_schema.sql
+
+-- ── FEEDBACK INGESTION ────────────────────────────────────────
+-- Reviews, suggestions, bug reports from tourists and operators
+CREATE TABLE IF NOT EXISTS feedback_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    source TEXT NOT NULL CHECK (source IN ('tourist_review','operator_feedback','support_ticket','app_store','social_media','manual')),
+    source_id TEXT,  -- external ID from review platform
+    author_name TEXT,
+    author_email TEXT,
+    author_type TEXT CHECK (author_type IN ('tourist','operator','visitor','unknown')),
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    category TEXT NOT NULL CHECK (category IN ('bug','ux_issue','feature_request','content_error','performance','design','positive','other')),
+    severity TEXT DEFAULT 'medium' CHECK (severity IN ('critical','high','medium','low')),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    page_url TEXT,       -- which page the feedback relates to
+    screenshot_url TEXT,  -- if user attached screenshot
+    sentiment TEXT CHECK (sentiment IN ('positive','neutral','negative','urgent')),
+    ai_summary TEXT,     -- AI-generated summary
+    ai_actionable_items JSONB,  -- AI-extracted specific fixes needed
+    status TEXT DEFAULT 'new' CHECK (status IN ('new','triaged','fix_in_progress','fix_ready','verified','deployed','dismissed')),
+    assigned_to TEXT DEFAULT 'ai',  -- 'ai' or developer name
+    fix_pr_url TEXT,     -- link to the fix branch/PR
+    fix_commit_hash TEXT,
+    verified_at TIMESTAMPTZ,
+    deployed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_feedback_status ON feedback_log(status);
+CREATE INDEX idx_feedback_category ON feedback_log(category);
+CREATE INDEX idx_feedback_severity ON feedback_log(severity);
+CREATE INDEX idx_feedback_created ON feedback_log(created_at DESC);
+
+-- ── CODE FIX ATTEMPTS ─────────────────────────────────────────
+-- Tracks each AI-attempted fix
+CREATE TABLE IF NOT EXISTS code_fix_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    feedback_id UUID REFERENCES feedback_log(id),
+    fix_type TEXT NOT NULL CHECK (fix_type IN ('bug_fix','ux_improvement','content_update','performance_optimization','design_tweak')),
+    files_changed TEXT[],  -- list of files modified
+    branch_name TEXT NOT NULL,
+    commit_hash TEXT,
+    pr_url TEXT,
+    ai_model_used TEXT,
+    ai_tokens_used INTEGER,
+    ai_cost_usd NUMERIC(10,6),
+    test_results JSONB,   -- browser test results
+    test_status TEXT CHECK (test_status IN ('pending','passed','failed','partial')),
+    founder_review_status TEXT DEFAULT 'pending' CHECK (founder_review_status IN ('pending','approved','rejected','needs_changes')),
+    founder_notes TEXT,
+    fix_summary TEXT,     -- AI-generated summary of what was changed
+    before_screenshot TEXT,  -- base64 or URL
+    after_screenshot TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    reviewed_at TIMESTAMPTZ,
+    deployed_at TIMESTAMPTZ
+);
+CREATE INDEX idx_fix_feedback ON code_fix_log(feedback_id);
+CREATE INDEX idx_fix_status ON code_fix_log(founder_review_status);
+
+-- ── BROWSER TEST RESULTS ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS browser_test_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    fix_id UUID REFERENCES code_fix_log(id),
+    test_name TEXT NOT NULL,
+    test_url TEXT NOT NULL,
+    viewport_width INTEGER DEFAULT 1280,
+    viewport_height INTEGER DEFAULT 720,
+    status TEXT NOT NULL CHECK (status IN ('passed','failed','error','skipped')),
+    screenshot_before TEXT,  -- before fix
+    screenshot_after TEXT,   -- after fix
+    console_errors TEXT[],
+    network_errors TEXT[],
+    visual_diff_score NUMERIC(5,2),  -- 0-100, how different screenshots are
+    test_duration_ms INTEGER,
+    error_message TEXT,
+    tested_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_test_fix ON browser_test_log(fix_id);
+CREATE INDEX idx_test_status ON browser_test_log(status);
+
+-- ── UPDATED_AT TRIGGER ────────────────────────────────────────
+CREATE TRIGGER update_feedback_log_updated_at BEFORE UPDATE ON feedback_log FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+-- TIER 1: Revenue Impact Schema
+-- Sales Prospecting, Dynamic Pricing, Booking Bot, Revenue Analytics, Contracts
+
+-- ── SALES PROSPECTING ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS leads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_name TEXT NOT NULL,
+  contact_name TEXT,
+  email TEXT,
+  phone TEXT,
+  website TEXT,
+  company_type TEXT CHECK (company_type IN ('tour_operator', 'travel_agency', 'corporate', 'wedding_planner', 'influencer', 'other')),
+  location TEXT,
+  employee_count INTEGER,
+  estimated_revenue NUMERIC(12,2),
+  lead_score INTEGER DEFAULT 0 CHECK (lead_score BETWEEN 0 AND 100),
+  lead_status TEXT DEFAULT 'new' CHECK (lead_status IN ('new', 'contacted', 'qualified', 'converted', 'lost')),
+  source TEXT,
+  notes TEXT,
+  enriched_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS outreach_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID REFERENCES leads(id),
+  channel TEXT CHECK (channel IN ('email', 'linkedin', 'whatsapp', 'phone', 'other')),
+  subject TEXT,
+  body TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'delivered', 'opened', 'replied', 'bounced', 'failed')),
+  sent_at TIMESTAMPTZ,
+  opened_at TIMESTAMPTZ,
+  replied_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── DYNAMIC PRICING ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pricing_data (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  safari_type TEXT NOT NULL,
+  competitor_name TEXT,
+  competitor_price NUMERIC(10,2),
+  our_price NUMERIC(10,2),
+  currency TEXT DEFAULT 'USD',
+  demand_index NUMERIC(5,2),
+  season TEXT CHECK (season IN ('peak', 'shoulder', 'low')),
+  occupancy_rate NUMERIC(5,2),
+  recommended_price NUMERIC(10,2),
+  price_change_pct NUMERIC(5,2),
+  reasoning TEXT,
+  data_date DATE DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pricing_alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  safari_type TEXT NOT NULL,
+  alert_type TEXT CHECK (alert_type IN ('price_drop', 'price_increase', 'demand_spike', 'demand_drop', 'competitor_change')),
+  message TEXT,
+  recommended_action TEXT,
+  urgency TEXT DEFAULT 'medium' CHECK (urgency IN ('low', 'medium', 'high', 'critical')),
+  acknowledged BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── BOOKING BOT ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tourist_id UUID,
+  platform TEXT CHECK (platform IN ('whatsapp', 'telegram', 'web', 'sms')),
+  platform_user_id TEXT,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'closed', 'transferred')),
+  intent TEXT,
+  sentiment NUMERIC(3,2),
+  messages_count INTEGER DEFAULT 0,
+  booking_id UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id),
+  role TEXT CHECK (role IN ('user', 'assistant', 'system')),
+  content TEXT NOT NULL,
+  intent_detected TEXT,
+  entities JSONB DEFAULT '{}',
+  tokens_used INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── REVENUE ANALYTICS ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS revenue_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  metric_name TEXT NOT NULL,
+  metric_value NUMERIC(12,2),
+  metric_unit TEXT,
+  dimension_1 TEXT,
+  dimension_2 TEXT,
+  period TEXT,
+  calculated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS revenue_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_type TEXT CHECK (report_type IN ('daily', 'weekly', 'monthly', 'quarterly', 'custom')),
+  period_start DATE,
+  period_end DATE,
+  total_revenue NUMERIC(12,2),
+  total_bookings INTEGER,
+  avg_booking_value NUMERIC(10,2),
+  new_customers INTEGER,
+  returning_customers INTEGER,
+  churn_rate NUMERIC(5,2),
+  mrr NUMERIC(12,2),
+  arpu NUMERIC(10,2),
+  ltv NUMERIC(10,2),
+  report_data JSONB DEFAULT '{}',
+  generated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── CONTRACTS ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS contracts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  partner_id UUID,
+  partner_name TEXT NOT NULL,
+  contract_type TEXT CHECK (contract_type IN ('airline', 'lodge', 'activity', 'transport', 'insurance', 'technology', 'other')),
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'review', 'sent', 'signed', 'expired', 'terminated')),
+  commission_pct NUMERIC(5,2),
+  commission_type TEXT DEFAULT 'percentage' CHECK (commission_type IN ('percentage', 'fixed', 'tiered')),
+  payment_terms TEXT,
+  start_date DATE,
+  end_date DATE,
+  terms JSONB DEFAULT '{}',
+  pdf_url TEXT,
+  signed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── INDEXES ────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(lead_status);
+CREATE INDEX IF NOT EXISTS idx_leads_score ON leads(lead_score DESC);
+CREATE INDEX IF NOT EXISTS idx_outreach_lead ON outreach_log(lead_id);
+CREATE INDEX IF NOT EXISTS idx_pricing_date ON pricing_data(data_date);
+CREATE INDEX IF NOT EXISTS idx_pricing_type ON pricing_data(safari_type);
+CREATE INDEX IF NOT EXISTS idx_conversations_platform ON conversations(platform);
+CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
+CREATE INDEX IF NOT EXISTS idx_revenue_period ON revenue_reports(period_start, period_end);
+CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts(status);
+CREATE INDEX IF NOT EXISTS idx_contracts_partner ON contracts(partner_id);
+-- TIER 2: Operational Excellence Schema
+-- Inventory, Sentiment, Social Content, Operator Scoring, Onboarding
+
+-- ── INVENTORY MANAGEMENT ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS inventory_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_type TEXT CHECK (item_type IN ('lodge', 'vehicle', 'equipment', 'guide', 'activity')),
+  name TEXT NOT NULL,
+  description TEXT,
+  location TEXT,
+  capacity INTEGER DEFAULT 1,
+  status TEXT DEFAULT 'available' CHECK (status IN ('available', 'booked', 'maintenance', 'retired')),
+  daily_rate NUMERIC(10,2),
+
+
+=== cd /opt/safarizetu-ops-engine && cat src/services/observability.service.ts | head -150 ===
+import { logger } from './ai-agent.service'
+
+// ── LANGFUSE OBSERVABILITY SERVICE ─────────────────────────────
+// Track every LLM call, monitor costs, evaluate response quality,
+// debug failures, and generate performance reports
+
+interface TraceEntry {
+  id: string
+  name: string
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+  latency_ms: number
+  status: 'success' | 'error' | 'timeout'
+  error?: string
+  metadata?: Record<string, any>
+  timestamp: Date
+}
+
+interface GenerationEntry {
+  id: string
+  trace_id: string
+  model: string
+  input: string
+  output: string
+  tokens: number
+  cost_usd: number
+  duration_ms: number
+  prompt_version?: string
+}
+
+interface ScoreEntry {
+  id: string
+  trace_id: string
+  name: string
+  value: number
+  comment?: string
+}
+
+// In-memory store (upgrade to Langfuse cloud when ready)
+const traces: TraceEntry[] = []
+const generations: GenerationEntry[] = []
+const scores: ScoreEntry[] = []
+
+let traceCounter = 0
+
+// ── START TRACE ────────────────────────────────────────────────
+export function startTrace(
+  name: string,
+  model: string,
+  metadata?: Record<string, any>
+): string {
+  const traceId = `trace-${++traceCounter}-${Date.now()}`
+  const trace: TraceEntry = {
+    id: traceId,
+    name,
+    model,
+    input_tokens: 0,
+    output_tokens: 0,
+    cost_usd: 0,
+    latency_ms: 0,
+    status: 'success',
+    metadata,
+    timestamp: new Date()
+  }
+  traces.push(trace)
+  return traceId
+}
+
+// ── END TRACE ──────────────────────────────────────────────────
+export function endTrace(
+  traceId: string,
+  result: {
+    input_tokens: number
+    output_tokens: number
+    cost_usd: number
+    latency_ms: number
+    status: 'success' | 'error' | 'timeout'
+    error?: string
+  }
+): void {
+  const trace = traces.find(t => t.id === traceId)
+  if (trace) {
+    trace.input_tokens = result.input_tokens
+    trace.output_tokens = result.output_tokens
+    trace.cost_usd = result.cost_usd
+    trace.latency_ms = result.latency_ms
+    trace.status = result.status
+    trace.error = result.error
+  }
+}
+
+// ── LOG GENERATION ─────────────────────────────────────────────
+export function logGeneration(params: {
+  traceId: string
+  model: string
+  input: string
+  output: string
+  tokens: number
+  costUsd: number
+  durationMs: number
+}): void {
+  generations.push({
+    id: `gen-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    trace_id: params.traceId,
+    model: params.model,
+    input: params.input.substring(0, 200),
+    output: params.output.substring(0, 200),
+    tokens: params.tokens,
+    cost_usd: params.costUsd,
+    duration_ms: params.durationMs
+  })
+}
+
+// ── SCORE TRACE ────────────────────────────────────────────────
+export function scoreTrace(
+  traceId: string,
+  name: string,
+  value: number,
+  comment?: string
+): void {
+  scores.push({
+    id: `score-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    trace_id: traceId,
+    name,
+    value,
+    comment
+  })
+}
+
+// ── GET METRICS ────────────────────────────────────────────────
+export function getMetrics(): {
+  total_traces: number
+  total_cost_usd: number
+  total_tokens: number
+  avg_latency_ms: number
+  error_rate: number
+  cost_by_model: Record<string, number>
+  traces_by_status: Record<string, number>
+} {
+  const totalCost = traces.reduce((s, t) => s + t.cost_usd, 0)
+  const totalTokens = traces.reduce((s, t) => s + t.input_tokens + t.output_tokens, 0)
+  const avgLatency = traces.length > 0
+    ? traces.reduce((s, t) => s + t.latency_ms, 0) / traces.length
+    : 0
+  const errorCount = traces.filter(t => t.status === 'error').length
+
+  const costByModel: Record<string, number> = {}
+  const tracesByStatus: Record<string, number> = {}
+
+
+=== cd /opt/safarizetu-ops-engine && cat src/services/chroma.service.ts | head -150 ===
+import { logger } from '../services/ai-agent.service'
+
+// ── CHROMA SERVICE — Vector search for safari catalogs ─────────
+// Store and search lodge descriptions, park info, equipment catalogs
+// and partnership data using vector embeddings
+
+interface VectorDocument {
+  id: string
+  collection: string
+  text: string
+  metadata?: Record<string, any>
+}
+
+// In-memory vector store (upgrade to Chroma API when Docker available)
+const vectorStore = new Map<string, VectorDocument[]>()
+
+// ── EMBED (simple keyword vector for local mode) ───────────────
+function simpleEmbed(text: string): number[] {
+  const words = text.toLowerCase().split(/\s+/)
+  const vector = new Array(384).fill(0)
+  for (const word of words) {
+    let hash = 0
+    for (let i = 0; i < word.length; i++) {
+      hash = ((hash << 5) - hash + word.charCodeAt(i)) | 0
+    }
+    vector[Math.abs(hash) % 384] += 1
+  }
+  const magnitude = Math.sqrt(vector.reduce((s, v) => s + v * v, 0))
+  return magnitude > 0 ? vector.map(v => v / magnitude) : vector
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, magA = 0, magB = 0
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]
+    magA += a[i] * a[i]
+    magB += b[i] * b[i]
+  }
+  return magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0
+}
+
+// ── UPSERT DOCUMENTS ───────────────────────────────────────────
+export async function upsertDocuments(
+  collection: string,
+  docs: Array<{ id: string; text: string; metadata?: Record<string, any> }>
+): Promise<void> {
+  const existing = vectorStore.get(collection) || []
+
+  for (const doc of docs) {
+    const idx = existing.findIndex(d => d.id === doc.id)
+    const entry: VectorDocument = { ...doc, collection }
+    if (idx >= 0) existing[idx] = entry
+    else existing.push(entry)
+  }
+
+  vectorStore.set(collection, existing)
+  logger.info(`Upserted ${docs.length} docs into collection: ${collection}`)
+}
+
+// ── QUERY COLLECTION ───────────────────────────────────────────
+export async function queryCollection(
+  collection: string,
+  queryText: string,
+  topK: number = 5
+): Promise<Array<{ id: string; text: string; score: number; metadata?: Record<string, any> }>> {
+  const docs = vectorStore.get(collection) || []
+  const queryVec = simpleEmbed(queryText)
+
+  return docs
+    .map(doc => ({
+      id: doc.id,
+      text: doc.text,
+      score: cosineSimilarity(queryVec, simpleEmbed(doc.text)),
+      metadata: doc.metadata
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK)
+}
+
+// ── COLLECTION HELPERS ─────────────────────────────────────────
+export async function loadSafariCatalog(): Promise<void> {
+  const lodges = [
+    { id: 'lodge-1', text: 'Luxury Safari Lodge in Serengeti with game drives, bush dining, and wildlife photography tours. $450/night all-inclusive.', metadata: { type: 'lodge', region: 'serengeti', price_range: 'luxury' } },
+    { id: 'lodge-2', text: 'Budget camping safari in Kruger National Park. Tent accommodation, guided walks, and bird watching. $120/person.', metadata: { type: 'lodge', region: 'kruger', price_range: 'budget' } },
+    { id: 'lodge-3', text: 'Family-friendly lodge in Masai Mara with kids programs, balloon safaris, and cultural village visits. $320/night.', metadata: { type: 'lodge', region: 'masai-mara', price_range: 'mid-range' } },
+    { id: 'lodge-4', text: 'Victoria Falls adventure lodge with white water rafting, helicopter tours, and elephant encounters. $280/night.', metadata: { type: 'lodge', region: 'victoria-falls', price_range: 'mid-range' } },
+    { id: 'lodge-5', text: 'Exclusive mobile safari in Botswana Okavango Delta. Mokoro trips, fishing, and stargazing. $520/night premium.', metadata: { type: 'lodge', region: 'okavango', price_range: 'premium' } },
+    { id: 'park-1', text: 'Serengeti National Park: 14,750 sq km, home to the Great Migration, Big Five, and over 500 bird species. Entry $60/day.', metadata: { type: 'park', region: 'serengeti' } },
+    { id: 'park-2', text: 'Victoria Falls National Park: UNESCO World Heritage Site, 1,708m wide waterfall. Entry $30/day.', metadata: { type: 'park', region: 'victoria-falls' } },
+    { id: 'park-3', text: 'Kruger National Park: 19,485 sq km, 147 mammal species, self-drive friendly. Entry $25/day.', metadata: { type: 'park', region: 'kruger' } },
+    { id: 'partner-1', text: 'FastJet: Budget airline flying Harare to Victoria Falls, Lusaka to Dar es Salaam. Partner commission 8%.', metadata: { type: 'partner', category: 'airline' } },
+    { id: 'partner-2', text: 'Air Zimbabwe: National carrier, Harare to Nairobi, Johannesburg, London. Partner commission 10%.', metadata: { type: 'partner', category: 'airline' } },
+    { id: 'equip-1', text: 'Safari gear rental: binoculars $15/day, camera lenses $25/day, hiking boots $10/day, sleeping bags $8/day.', metadata: { type: 'equipment' } },
+  ]
+  await upsertDocuments('safari-catalog', lodges)
+}
+
+export async function loadPartnershipData(): Promise<void> {
+  const partners = [
+    { id: 'fastjet', text: 'FastJet airline partnership: budget flights across East/Southern Africa. 8% commission. Contact: partnerships@fastjet.com', metadata: { status: 'active', type: 'airline' } },
+    { id: 'air-zimbabwe', text: 'Air Zimbabwe partnership: national carrier, regional and international routes. 10% commission. Contact: corp@airzimbabwe.co.zw', metadata: { status: 'active', type: 'airline' } },
+    { id: 'amref', text: 'AMREF Flying Doctors: emergency medical evacuation for safari travelers. $45/trip coverage.', metadata: { status: 'prospect', type: 'medical' } },
+    { id: 'wild-lands', text: 'Wilderness Safaris: luxury lodge chain, 60+ camps across Africa. Revenue share model.', metadata: { status: 'prospect', type: 'lodge' } },
+  ]
+  await upsertDocuments('partnerships', partners)
+}
+
+// ── RAG QUERY (combines memory + vector search) ────────────────
+export async function ragQuery(
+  question: string,
+  context?: { touristId?: string; operatorId?: string }
+): Promise<string> {
+  const results = await queryCollection('safari-catalog', question, 3)
+  const partnershipResults = await queryCollection('partnerships', question, 2)
+
+  const contextStr = [
+    ...results.map(r => `[${r.metadata?.type || 'info'}] ${r.text}`),
+    ...partnershipResults.map(r => `[partner] ${r.text}`)
+  ].join('\n')
+
+  return `Based on Safari Zetu catalog:\n${contextStr}\n\nQuestion: ${question}`
+}
+
+
+=== cd /opt/safarizetu-ops-engine && cat src/agents/division1-growth.ts | head -200 ===
+import { callAgent, fetchFromSafariZetu, sendEmail, pool, logger } from '../services/ai-agent.service'
+import { AGENT_PROMPTS } from './prompts'
+import { enquiryAcknowledgementEmail } from '../services/email-templates/enquiry-acknowledgement'
+
+// ── ENQUIRY ACKNOWLEDGEMENT ───────────────────────────────────
+export async function acknowledgeEnquiry(enquiry: any): Promise<void> {
+  logger.info(`Acknowledging enquiry ${enquiry.id}`)
+
+  // Use the template to generate the email
+  const emailHtml = enquiryAcknowledgementEmail({
+    touristName: enquiry.tourist?.name || 'there',
+    enquiryId: enquiry.id,
+    destination: enquiry.destination || 'Zimbabwe Safari',
+    travelDates: enquiry.travelDates || 'Flexible dates',
+    partySize: enquiry.groupSize || 1,
+    enquiryUrl: `https://safarizetu.com/enquiry/${enquiry.id}`
+  })
+
+  // Send the email
+  const messageId = await sendEmail(
+    enquiry.tourist?.email,
+    `Your Safari Zetu Enquiry — ${enquiry.destination || 'Zimbabwe Safari'}`,
+    emailHtml
+  )
+
+  // Log to ops database
+  await pool.query(
+    `INSERT INTO outreach_log (entity_type, entity_id, email_to, email_subject, email_body, email_type, resend_message_id, status, agent_name, tokens_used, model_used, cost_usd, sent_at)
+     VALUES ('tourist', $1, $2, $3, $4, 'acknowledgement', $5, 'sent', 'enquiry_acknowledgement', $6, $7, $8, NOW())`,
+    [enquiry.id, enquiry.tourist?.email, `Your Safari Zetu Enquiry — ${enquiry.destination}`,
+     emailHtml, messageId, 0, 'template', 0]
+  )
+
+  // Update enquiry log
+  await pool.query(
+    `INSERT INTO enquiry_log (safari_zetu_enquiry_id, tourist_email, tourist_name, destination, status, acknowledgement_sent_at)
+     VALUES ($1, $2, $3, $4, 'acknowledged', NOW())
+     ON CONFLICT (safari_zetu_enquiry_id) DO UPDATE SET status='acknowledged', acknowledgement_sent_at=NOW()`,
+    [enquiry.id, enquiry.tourist?.email, enquiry.tourist?.name, enquiry.destination]
+  )
+
+  logger.info(`Enquiry ${enquiry.id} acknowledged successfully`)
+}
+
+// ── SEO CONTENT GENERATION ────────────────────────────────────
+export async function generateSeoContent(topic: string, destination?: string, keywords?: string[]): Promise<void> {
+  logger.info(`Generating SEO content: ${topic}`)
+
+  // Queue the content item
+  const { rows: [contentItem] } = await pool.query(
+    `INSERT INTO content_queue (content_type, topic, keywords, target_destination, status)
+     VALUES ('blog_article', $1, $2, $3, 'generating') RETURNING id`,
+    [topic, keywords || [], destination || null]
+  )
+
+  try {
+    const result = await callAgent({
+      agentName: 'seo_content_generator',
+      division: 'growth',
+      model: 'heavy',
+      systemPrompt: AGENT_PROMPTS.seo_content_generator,
+      userMessage: `Write an SEO article about: ${topic}. Primary keyword: ${keywords?.[0] || topic}. ${destination ? `Focus destination: ${destination}.` : ''} ${keywords ? `Secondary keywords: ${keywords.slice(1).join(', ')}.` : ''}`,
+      triggerType: 'scheduled_content',
+      maxTokens: 3000
+    })
+
+    // Parse title and content
+    const lines = result.content.split('\n')
+    const titleLine = lines.find(l => l.startsWith('Title:'))
+    const title = titleLine?.replace('Title:', '').trim() || topic
+    const contentBody = result.content.split('---').slice(1).join('---').trim()
+
+    // Move to approval queue
+    await pool.query(
+      `UPDATE content_queue SET status='pending_approval', title=$1, draft_content=$2, generated_at=NOW(), tokens_used=$3, model_used=$4, cost_usd=$5, word_count=$6 WHERE id=$7`,
+      [title, contentBody, result.tokensUsed, result.model, result.costUsd, contentBody.split(' ').length, contentItem.id]
+    )
+
+    await pool.query(
+      `INSERT INTO approval_queue (item_type, reference_id, title, preview, full_content, priority)
+       VALUES ('content', $1, $2, $3, $4, 'normal')`,
+      [contentItem.id, title, contentBody.substring(0, 300) + '...', contentBody]
+    )
+
+    logger.info(`SEO content generated and queued for approval: ${title}`)
+  } catch (error: any) {
+    await pool.query(`UPDATE content_queue SET status='queued' WHERE id=$1`, [contentItem.id])
+    throw error
+  }
+}
+
+// ── OPERATOR ACTIVATION ───────────────────────────────────────
+export async function sendOperatorActivation(operator: any, stage: 'day1' | 'day3' | 'day7'): Promise<void> {
+  const promptKey = `operator_activation_${stage}` as keyof typeof AGENT_PROMPTS
+  logger.info(`Sending ${stage} activation to operator ${operator.id}`)
+
+  const result = await callAgent({
+    agentName: `operator_activation_${stage}`,
+    division: 'operator_relations',
+    model: 'light',
+    systemPrompt: AGENT_PROMPTS[promptKey],
+    userMessage: JSON.stringify({
+      operator_name: operator.name,
+      contact_name: operator.contactName || operator.name,
+      operator_type: operator.operatorType,
+      destination: operator.destinations?.[0],
+      listing_completion: operator.listingCompletion || 0
+    }),
+    triggerType: `operator_activation_${stage}`,
+    triggerPayload: { operator_id: operator.id }
+  })
+
+  const subject = {
+    day1: 'Welcome to Safari Zetu — Complete your listing today',
+    day3: 'Your Safari Zetu listing is almost ready',
+    day7: 'One last thing from Safari Zetu'
+  }[stage]
+
+  const messageId = await sendEmail(operator.email, subject, result.content)
+
+  // Use whitelist map to prevent SQL injection
+  const stageColumnMap: Record<string, string> = {
+    day1: 'day1_sent_at',
+    day3: 'day3_sent_at',
+    day7: 'day7_sent_at'
+  }
+  const columnName = stageColumnMap[stage]
+  if (!columnName) throw new Error(`Invalid activation stage: ${stage}`)
+
+  await pool.query(
+    `UPDATE operator_activation_queue SET activation_stage=$1, ${columnName}=NOW() WHERE safari_zetu_operator_id=$2`,
+    [stage + '_sent', operator.id]
+  )
+
+  await pool.query(
+    `INSERT INTO outreach_log (entity_type, entity_id, email_to, email_subject, email_body, email_type, resend_message_id, status, agent_name, tokens_used, model_used, cost_usd, sent_at)
+     VALUES ('operator', $1, $2, $3, $4, $5, $6, 'sent', $7, $8, $9, $10, NOW())`,
+    [operator.id, operator.email, subject, result.content, `activation_${stage}`, messageId,
+     `operator_activation_${stage}`, result.tokensUsed, result.model, result.costUsd]
+  )
+
+  logger.info(`Operator ${operator.id} activation ${stage} sent`)
+}
+
+
+=== cd /opt/safarizetu-ops-engine && cat src/agents/sales-prospector.ts | head -200 ===
+import { callAgent, logger, sendEmail, fetchFromSafariZetu } from '../services/ai-agent.service'
+import { storeMemory, retrieveMemory } from '../services/memory.service'
+import { queryCollection, upsertDocuments } from '../services/chroma.service'
+import { startTrace, endTrace } from '../services/observability.service'
+import {
+  searchPeople,
+  searchOrganizations,
+  enrichPerson,
+  enrichOrganization,
+  getApolloStatus,
+  ApolloPerson,
+  ApolloOrganization,
+  ApolloSearchFilters
+} from '../services/apollo.service'
+
+// ── SALES PROSPECTING ENGINE ───────────────────────────────────
+// Skills: Apollo.io (lead discovery + enrichment), Browser-Use (scraping)
+// Auto-discovers tour operators, travel agencies, corporate planners
+// Enriches leads, scores them, and generates personalized outreach
+
+interface Lead {
+  id: string
+  company_name: string
+  contact_name?: string
+  email?: string
+  phone?: string
+  website?: string
+  company_type: 'tour_operator' | 'travel_agency' | 'corporate' | 'wedding_planner' | 'influencer' | 'other'
+  location?: string
+  employee_count?: number
+  estimated_revenue?: number
+  lead_score: number
+  lead_status: string
+  source: string
+  notes?: string
+  apollo_person_id?: string
+  apollo_org_id?: string
+}
+
+interface OutreachEmail {
+  to: string
+  subject: string
+  body: string
+  lead_id: string
+}
+
+// ── LEAD SOURCES ───────────────────────────────────────────────
+// Apollo.io search queries mapped to category types
+const LEAD_SOURCES: Record<string, ApolloSearchFilters> = {
+  tour_operators: {
+    titles: ['Owner', 'CEO', 'Managing Director', 'Partnership Manager', 'Business Development'],
+    industries: ['safari', 'wildlife tourism', 'adventure travel', 'tour operator'],
+    locations: ['Zimbabwe', 'Kenya', 'Tanzania', 'South Africa', 'Botswana'],
+    employee_count_min: 2,
+    person_seniorities: ['owner', 'founder', 'c_suite', 'vp', 'director']
+  },
+  travel_agencies: {
+    titles: ['Travel Advisor', 'Travel Agent', 'Partnership Manager', 'Director of Partnerships', 'Head of Business Development'],
+    industries: ['travel agency', 'travel services', 'tourism'],
+    locations: ['United Kingdom', 'United States', 'Germany', 'Australia', 'United Arab Emirates'],
+    employee_count_min: 5,
+    person_seniorities: ['c_suite', 'vp', 'director', 'manager']
+  },
+  corporate: {
+    titles: ['Head of Events', 'Corporate Travel Manager', 'Executive Assistant', 'Chief of Staff', 'Office Manager'],
+    industries: ['corporate events', 'corporate travel', 'team building', 'event planning'],
+    locations: ['United States', 'United Kingdom', 'South Africa', 'United Arab Emirates'],
+    employee_count_min: 50,
+    person_seniorities: ['c_suite', 'vp', 'director', 'manager']
+  },
+  wedding_planners: {
+    titles: ['Wedding Planner', 'Event Coordinator', 'Destination Wedding Specialist', 'Owner'],
+    industries: ['wedding planning', 'event planning', 'wedding services'],
+    locations: ['United States', 'United Kingdom', 'South Africa', 'United Arab Emirates'],
+    employee_count_min: 1,
+    person_seniorities: ['owner', 'founder', 'c_suite', 'director']
+  }
+}
+
+// Fallback for when Apollo is not configured
+const FALLBACK_LEAD_SOURCES = {
+  tour_operators: [
+    'safari operators Zimbabwe directory',
+    'tour companies Kenya association',
+    'wildlife tour operators Tanzania',
+    'adventure travel operators Southern Africa',
+    'luxury safari companies East Africa',
+  ],
+  travel_agencies: [
+    'travel agencies specializing Africa safaris',
+    'UK travel advisors wildlife holidays',
+    'US travel agents safari specialist',
+    'German tour operators Africa',
+    'Chinese travel agencies safari packages',
+  ],
+  corporate: [
+    'corporate retreat venues Africa',
+    'team building safari packages Zimbabwe',
+    'executive wellness retreat safaris',
+    'conference venues with safari experience',
+  ],
+  wedding_planners: [
+    'safari wedding planners Africa',
+    'honeymoon safari specialists',
+    'destination wedding coordinators Zimbabwe',
+  ]
+}
+
+// ── CONVERT APOLLO PERSON TO LEAD ───────────────────────────────
+function apolloPersonToLead(person: ApolloPerson, category: string): Lead {
+  const org = person.organization
+  return {
+    id: `lead-apollo-${person.id}`,
+    company_name: org?.name || 'Unknown',
+    contact_name: person.name,
+    email: person.email,
+    phone: person.phone_numbers?.[0]?.sanitized_number,
+    website: org?.website_url,
+    company_type: category as Lead['company_type'],
+    location: [person.city, person.state, person.country].filter(Boolean).join(', ') || undefined,
+    employee_count: org?.estimated_num_employees,
+    lead_score: 0, // Scored later
+    lead_status: 'new',
+    source: `apollo_person_${category}`,
+    notes: person.headline || person.title || undefined,
+    apollo_person_id: person.id,
+    apollo_org_id: org?.id
+  }
+}
+
+function apolloOrgToLead(org: ApolloOrganization, category: string): Lead {
+  return {
+    id: `lead-apollo-org-${org.id}`,
+    company_name: org.name,
+    contact_name: undefined, // Needs enrichment
+    email: org.email,
+    website: org.website_url,
+    company_type: category as Lead['company_type'],
+    location: [org.city, org.state, org.country].filter(Boolean).join(', ') || undefined,
+    employee_count: org.estimated_num_employees,
+    lead_score: 0,
+    lead_status: 'new',
+    source: `apollo_org_${category}`,
+    notes: org.short_description,
+    apollo_org_id: org.id
+  }
+}
+
+// ── GENERATE LEADS (Apollo-first, LLM fallback) ───────────────
+export async function generateLeads(
+  category: string,
+  count: number = 10
+): Promise<Lead[]> {
+  const leads: Lead[] = []
+  const apollo = getApolloStatus()
+
+  if (apollo.configured) {
+    // ── APOLLO.IO PATH: Real data from Apollo ──────────────────
+    logger.info(`Using Apollo.io for ${category} lead discovery`)
+
+    const filters = LEAD_SOURCES[category]
+    if (filters) {
+      // Search for people (decision makers)
+      const personResults = await searchPeople(filters, 1, count)
+      for (const person of personResults.people) {
+        leads.push(apolloPersonToLead(person, category))
+      }
+
+      // If we need more leads, search organizations too
+      if (leads.length < count) {
+        const orgResults = await searchOrganizations(filters, 1, count - leads.length)
+        for (const org of orgResults.organizations) {
+          leads.push(apolloOrgToLead(org, category))
+        }
+      }
+
+      logger.info(`Apollo returned ${leads.length} real leads for ${category}`)
+    }
+  }
+
+  // ── LLM FALLBACK: Generate synthetic leads if Apollo unavailable ──
+  if (leads.length === 0) {
+    logger.info(`Falling back to LLM-generated leads for ${category}`)
+    const fallbackSources = FALLBACK_LEAD_SOURCES[category as keyof typeof FALLBACK_LEAD_SOURCES] || []
+
+    for (const source of fallbackSources) {
+      const result = await callAgent({
+        agentName: 'sales_prospector',
+        division: 'growth',
+        model: 'light',
+        systemPrompt: `You are a sales intelligence agent for Safari Zetu, a safari marketplace platform.
+Research and generate realistic leads for: ${source}
+
+For each lead, provide:
+- company_name: Realistic company name
+- contact_name: Decision maker name
+- email: Professional email
+- website: Company website
+- company_type: One of tour_operator, travel_agency, corporate, wedding_planner
+- location: City, Country
+
+
+=== cd /opt/safarizetu-ops-engine && cat src/pipeline/marketing-pipeline.service.ts | head -200 ===
+import { logger, pool } from '../services/ai-agent.service'
+import { callAgent } from '../services/ai-agent.service'
+import { analyzeImage, ImageAnalysis } from '../services/image-analysis.service'
+import { pickFreshVariation, buildCaptionPrompt, logPostToHistory, getDiversityReport } from '../services/content-diversity.engine'
+import { createPost, postToAllPlatforms, isBufferConfigured } from '../services/buffer.service'
+
+// ── MARKETING CONTENT PIPELINE ─────────────────────────────────
+// Upload → Analyze → Create → Approve → Post
+// Each step is independent, no repetition, maximum excitement
+
+interface PipelineImage {
+  url: string
+  filename: string
+  uploaded_at: Date
+}
+
+interface ContentDraft {
+  id: string
+  image_url: string
+  image_analysis: ImageAnalysis
+  platform: string
+  caption: string
+  hashtags: string[]
+  status: 'draft' | 'pending_approval' | 'approved' | 'published' | 'rejected'
+  created_at: Date
+}
+
+interface PipelineResult {
+  total_images: number
+  drafts_created: number
+  platforms: string[]
+  diversity_report: string
+  approval_queue_size: number
+}
+
+// ── PROCESS UPLOADED IMAGES ────────────────────────────────────
+// Main pipeline: images → analyzed content drafts → approval queue
+export async function processUploadedImages(
+  imageUrls: string[],
+  platforms: string[] = ['instagram', 'facebook', 'tiktok', 'linkedin']
+): Promise<PipelineResult> {
+  logger.info(`Processing ${imageUrls.length} uploaded images for ${platforms.length} platforms`)
+
+  const allDrafts: ContentDraft[] = []
+
+  for (const imageUrl of imageUrls) {
+    // Step 1: Analyze the image with Gemini Vision
+    const analysis = await analyzeImage(imageUrl)
+
+    // Step 2: Pick fresh content variation (no repetition)
+    const variation = await pickFreshVariation()
+
+    // Step 3: Generate caption for each platform
+    for (const platform of platforms) {
+      const caption = await generateCaption(analysis, variation, platform)
+
+      const draft: ContentDraft = {
+        id: `draft-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        image_url: imageUrl,
+        image_analysis: analysis,
+        platform,
+        caption: caption.text,
+        hashtags: caption.hashtags,
+        status: 'pending_approval',
+        created_at: new Date()
+      }
+
+      allDrafts.push(draft)
+
+      // Step 4: Save to approval queue
+      await saveToApprovalQueue(draft)
+    }
+
+    // Step 5: Log to history for diversity tracking
+    await logPostToHistory({
+      format: variation.format,
+      tone: variation.tone,
+      topic: variation.topic,
+      emotional_appeal: variation.emotional_appeal,
+      platform: platforms[0],
+      subject: analysis.subject
+    })
+  }
+
+  // Step 6: Get diversity report
+  const diversity = await getDiversityReport()
+
+  logger.info(`Pipeline complete: ${allDrafts.length} drafts created from ${imageUrls.length} images`)
+
+  return {
+    total_images: imageUrls.length,
+    drafts_created: allDrafts.length,
+    platforms,
+    diversity_report: diversity.recommendation,
+    approval_queue_size: allDrafts.length
+  }
+}
+
+// ── GENERATE CAPTION (via LLM) ─────────────────────────────────
+async function generateCaption(
+  analysis: ImageAnalysis,
+  variation: { format: string; tone: string; topic: string; emotional_appeal: string; call_to_action: string },
+  platform: string
+): Promise<{ text: string; hashtags: string[] }> {
+  const prompt = buildCaptionPrompt(analysis, variation, platform)
+
+  try {
+    const result = await callAgent({
+      agentName: 'marketing_content',
+      division: 'growth',
+      model: 'light',
+      systemPrompt: 'You are the Safari Zetu social media manager. You write captions that stop the scroll. Every caption must feel like it was written by a human who was actually there — not a marketing bot.',
+      userMessage: prompt,
+      triggerType: 'content_generation',
+      triggerPayload: { image: analysis.subject, platform, tone: variation.tone },
+      maxTokens: 500
+    })
+
+    const text = result.content.trim()
+    // Extract hashtags from the caption
+    const hashtagMatch = text.match(/#\w+/g)
+    const hashtags = hashtagMatch || analysis.suggested_hashtags.slice(0, 8)
+
+    return { text, hashtags }
+  } catch (e: any) {
+    logger.error(`Caption generation failed: ${e.message}`)
+    return {
+      text: `${analysis.subject} — ${analysis.mood}. ${variation.call_to_action} #SafariZetu #ZimbabweSafari`,
+      hashtags: analysis.suggested_hashtags.slice(0, 8)
+    }
+  }
+}
+
+// ── SAVE TO APPROVAL QUEUE ─────────────────────────────────────
+async function saveToApprovalQueue(draft: ContentDraft): Promise<void> {
+  try {
+    await pool.query(
+      `INSERT INTO approval_queue (item_type, reference_id, title, preview, full_content, priority, status)
+       VALUES ('content', $1, $2, $3, $4, 'normal', 'pending')`,
+      [
+        draft.id,
+        `${draft.platform.toUpperCase()}: ${draft.image_analysis.subject}`,
+        draft.caption.substring(0, 200),
+        JSON.stringify({
+          image_url: draft.image_url,
+          platform: draft.platform,
+          caption: draft.caption,
+          hashtags: draft.hashtags,
+          analysis: {
+            subject: draft.image_analysis.subject,
+            mood: draft.image_analysis.mood,
+            quality: draft.image_analysis.quality_score
+          }
+        })
+      ]
+    )
+  } catch (e: any) {
+    logger.error(`Failed to save to approval queue: ${e.message}`)
+  }
+}
+
+// ── APPROVE AND POST ───────────────────────────────────────────
+// Called when founder approves a draft → auto-posts via Buffer
+export async function approveAndPost(draftId: string): Promise<{ success: boolean; posted_to: string[] }> {
+  try {
+    // Get the draft from approval queue
+    const { rows } = await pool.query(
+      `SELECT * FROM approval_queue WHERE id = $1 AND status = 'approved'`,
+      [draftId]
+    )
+
+    if (rows.length === 0) {
+      return { success: false, posted_to: [] }
+    }
+
+    const item = rows[0]
+    const content = JSON.parse(item.full_content)
+
+    if (!isBufferConfigured()) {
+      logger.warn('Buffer not configured — cannot auto-post')
+      return { success: false, posted_to: [] }
+    }
+
+    // Post via Buffer
+    const result = await createPost({
+      text: content.caption,
+      media: content.image_url,
+      channelIds: undefined // Post to all connected channels
+    })
+
+    if (result.success) {
+      // Update status in approval queue
+      await pool.query(
+        `UPDATE approval_queue SET status = 'approved', reviewed_at = NOW() WHERE id = $1`,
+        [draftId]
+      )
+
+      // Log to content queue as published
+      await pool.query(
+        `INSERT INTO content_queue (content_type, topic, title, draft_content, status, published_at)
+
+
+=== cd /opt/safarizetu-ops-engine && cat src/pipeline/feedback-pipeline.ts 2>/dev/null | head -150 ===
+import { pool, logger, sendEmail } from '../services/ai-agent.service'
+import { triageFeedback, generateCodeFix, notifyFounderOfFix, FeedbackItem } from '../agents/division4-feedback'
+import { generateTestPlan, runBrowserTests, getTestVerdict } from '../agents/browser-test'
+
+// ── FEEDBACK PIPELINE ORCHESTRATOR ────────────────────────────
+// The complete closed-loop: feedback → triage → fix → test → review → deploy
+
+export async function processIncomingFeedback(feedback: FeedbackItem): Promise<void> {
+  logger.info(`=== FEEDBACK PIPELINE START: ${feedback.id} ===`)
+
+  // Step 1: Store raw feedback
+  await pool.query(
+    `INSERT INTO feedback_log (id, source, source_id, author_name, author_email, author_type, rating, title, body, page_url, screenshot_url, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'new')`,
+    [feedback.id, feedback.source, null, feedback.author_name, feedback.author_email,
+     feedback.author_type, feedback.rating, feedback.title, feedback.body,
+     feedback.page_url, feedback.screenshot_url]
+  )
+
+  // Step 2: AI triage — categorise and extract actionable items
+  const triaged = await triageFeedback(feedback)
+
+  // Step 3: If positive feedback, log it and stop
+  if (triaged.category === 'positive' || triaged.sentiment === 'positive') {
+    logger.info(`Positive feedback — no action needed: ${feedback.id}`)
+    await pool.query(
+      `UPDATE feedback_log SET status='dismissed', ai_summary=$1 WHERE id=$2`,
+      [`Positive feedback: ${triaged.ai_summary}`, feedback.id]
+    )
+    return
+  }
+
+  // Step 4: If auto-fixable, attempt code fix
+  const autoFixCategories = ['bug', 'ux_issue', 'content_error', 'design']
+  if (autoFixCategories.includes(triaged.category) && triaged.severity !== 'low') {
+    logger.info(`Attempting auto-fix for: ${feedback.id}`)
+
+    const fix = await generateCodeFix(triaged)
+
+    if (fix) {
+      // Step 5: Run browser tests against the fix
+      logger.info(`Running browser tests for fix: ${fix.fix_id}`)
+
+      const testPlan = await generateTestPlan(
+        fix.fix_id,
+        feedback.page_url || 'http://localhost:3000',
+        fix.fix_summary
+      )
+
+      const testResults = await runBrowserTests(fix.fix_id, testPlan)
+      const verdict = await getTestVerdict(fix.fix_id)
+
+      // Step 6: Update fix with test results
+      await pool.query(
+        `UPDATE code_fix_log SET
+           test_results=$1, test_status=$2, commit_hash=$3
+         WHERE id=$4`,
+        [JSON.stringify(testResults),
+         verdict.all_passed ? 'passed' : 'failed',
+         '',  // commit hash would be set after actual git commit
+         fix.fix_id]
+      )
+
+      // Step 7: If tests passed, notify founder for review
+      if (verdict.ready_for_review) {
+        logger.info(`All tests passed — notifying founder for review`)
+
+        await notifyFounderOfFix(fix.fix_id, triaged)
+
+        // Send email notification to founder
+        await sendEmail(
+          process.env.FOUNDER_EMAIL || 'marshal@safarizetu.com',
+          `[ACTION REQUIRED] Code Fix Ready: ${triaged.title}`,
+          `
+          <h2>AI-Generated Fix Ready for Review</h2>
+          <p><strong>Feedback:</strong> ${triaged.title}</p>
+          <p><strong>Category:</strong> ${triaged.category} | <strong>Severity:</strong> ${triaged.severity}</p>
+          <p><strong>Summary:</strong> ${fix.fix_summary}</p>
+          <p><strong>Tests:</strong> ${verdict.passed}/${verdict.total_tests} passed</p>
+          <p><strong>Branch:</strong> ${fix.branch_name}</p>
+          <hr>
+          <p>Review this fix in the Ops Engine dashboard:</p>
+          <p><a href="http://localhost:3002">Open Dashboard</a></p>
+          `
+        )
+      } else {
+        logger.info(`Tests failed — fix needs revision`)
+        await pool.query(
+          `UPDATE code_fix_log SET test_status='failed' WHERE id=$1`,
+          [fix.fix_id]
+        )
+      }
+    }
+  }
+
+  // Step 8: If not auto-fixable, create task for manual developer action
+  else {
+    logger.info(`Feedback requires manual attention: ${feedback.id}`)
+
+    await pool.query(
+      `INSERT INTO approval_queue (item_type, reference_id, title, preview, full_content, priority)
+       VALUES ('report', $1, $2, $3, $4, $5)`,
+      [feedback.id,
+       `Manual Fix Needed: ${triaged.title}`,
+       `${triaged.category}/${triaged.severity}: ${triaged.ai_summary}`,
+       `Actionable Items:\n${triaged.ai_actionable_items.map(i => `- ${i.action}`).join('\n')}`,
+       triaged.severity === 'critical' ? 'urgent' : 'high']
+    )
+  }
+
+  logger.info(`=== FEEDBACK PIPELINE COMPLETE: ${feedback.id} ===`)
+}
+
+// ── BATCH PROCESS FEEDBACK ────────────────────────────────────
+// For processing multiple feedback items at once
+
+export async function processPendingFeedback(limit: number = 10): Promise<void> {
+  const { rows: pending } = await pool.query(
+    `SELECT * FROM feedback_log WHERE status = 'new' ORDER BY
+       CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END,
+       created_at ASC
+     LIMIT $1`,
+    [limit]
+  )
+
+  logger.info(`Processing ${pending.length} pending feedback items`)
+
+  for (const item of pending) {
+    try {
+      await processIncomingFeedback({
+        id: item.id,
+        source: item.source,
+        author_name: item.author_name,
+        author_email: item.author_email,
+        author_type: item.author_type,
+        rating: item.rating,
+        title: item.title,
+        body: item.body,
+        page_url: item.page_url,
+        screenshot_url: item.screenshot_url
+      })
+    } catch (error: any) {
+      logger.error(`Failed to process feedback ${item.id}:`, error.message)
+    }
+  }
+}
+
+
+=== cd /opt/safarizetu-ops-engine && ls -la src/pipeline/ ===
+total 40
+drwxr-xr-x 2 root root 4096 Jun 18 18:27 .
+drwxr-xr-x 8 root root 4096 Jun 19 17:19 ..
+-rw-rw-rw- 1 root root 5834 Jun 11 16:23 feedback-pipeline.ts
+-rw-rw-rw- 1 root root 9454 Jun 17 06:53 marketing-pipeline.service.ts
+-rw-rw-rw- 1 root root 9055 Jun 17 07:10 memory-storytelling.service.ts
+
+
+=== cd /opt/safarizetu-ops-engine && ls -la skills/competitors/ ===
+total 12
+drwxr-xr-x 2 root root 4096 Jun 18 20:24 .
+drwxr-xr-x 7 root root 4096 Jun 18 20:24 ..
+-rw-r--r-- 1 root root  994 Jun 18 20:24 counter-strategies.md
+
+
+=== cd /opt/safarizetu-ops-engine && ls -la skills/copywriting/ ===
+total 16
+drwxr-xr-x 2 root root 4096 Jun 18 20:24 .
+drwxr-xr-x 7 root root 4096 Jun 18 20:24 ..
+-rw-r--r-- 1 root root 1736 Jun 18 20:24 memory-storytelling.md
+-rw-r--r-- 1 root root 1197 Jun 18 20:24 premium-voice.md
+
+
+=== cd /opt/safarizetu-ops-engine && ls -la skills/psychology/ ===
+total 16
+drwxr-xr-x 2 root root 4096 Jun 18 20:24 .
+drwxr-xr-x 7 root root 4096 Jun 18 20:24 ..
+-rw-r--r-- 1 root root 1278 Jun 18 20:24 booking-psychology.md
+-rw-r--r-- 1 root root 1362 Jun 18 20:24 travel-desire.md
+
+
+=== cd /opt/safarizetu-ops-engine && ls -la skills/traveler-profiles/ ===
+total 12
+drwxr-xr-x 2 root root 4096 Jun 18 20:24 .
+drwxr-xr-x 7 root root 4096 Jun 18 20:24 ..
+-rw-r--r-- 1 root root 1709 Jun 18 20:24 persona-templates.md
+
+
+=== cd /opt/safarizetu-ops-engine && ls -la skills/wildlife/ ===
+total 16
+drwxr-xr-x 2 root root 4096 Jun 18 20:24 .
+drwxr-xr-x 7 root root 4096 Jun 18 20:24 ..
+-rw-r--r-- 1 root root 1406 Jun 18 20:24 animal-behavior.md
+-rw-r--r-- 1 root root 1347 Jun 18 20:24 zimbabwe-parks.md
+
+

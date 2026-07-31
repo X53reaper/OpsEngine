@@ -1,0 +1,76 @@
+{
+  "name": "github-copilot",
+  "displayName": "GitHub Copilot",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "Agent Mode in VS Code, issue-to-PR workflow",
+  "longDescription": "GitHub Copilot is GitHub's AI pair programmer with Agent Mode in VS Code. It can work autonomously on tasks, create pull requests from issues, and understand your entire codebase.",
+  "pricing": "saas",
+  "url": "https://github.com/features/copilot",
+  "documentation": "https://docs.github.com/en/copilot",
+  "installCommand": "code --install-extension GitHub.copilot",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [
+    {
+      "name": "copilot-suggest",
+      "description": "Get code suggestions as you type",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "context": {"type": "string"},
+          "language": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "copilot-agent",
+      "description": "Run autonomous coding agent on tasks",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task": {"type": "string"},
+          "issueNumber": {"type": "number"}
+        },
+        "required": ["task"]
+      }
+    }
+  ],
+  "capabilities": [
+    "code-completion",
+    "agent-mode",
+    "issue-to-pr",
+    "codebase-chat",
+    "multi-language",
+    "ide-integration"
+  ],
+  "useCases": [
+    {
+      "name": "Issue Resolution",
+      "description": "Convert GitHub issues to pull requests automatically",
+      "impact": "Faster issue resolution cycle",
+      "complexity": "medium"
+    },
+    {
+      "name": "Code Completion",
+      "description": "Real-time code suggestions as you type",
+      "impact": "30-50% faster coding",
+      "complexity": "low"
+    }
+  ],
+  "integrations": ["vscode", "github", "git", "jetbrains", "neovim"],
+  "requirements": {
+    "node": null,
+    "python": null,
+    "docker": false
+  },
+  "examples": [
+    {
+      "name": "Solve issue",
+      "instruction": "Fix issue #123 by implementing the requested feature",
+      "files": ["src/feature.ts", "tests/feature.test.ts"]
+    }
+  ],
+  "relatedAgents": ["cursor", "cline", "copilot-workspace"]
+}

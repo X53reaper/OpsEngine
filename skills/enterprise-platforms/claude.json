@@ -1,0 +1,34 @@
+{
+  "name": "claude",
+  "displayName": "Claude",
+  "version": "1.0.0",
+  "category": "enterprise-platforms",
+  "description": "Tool use, computer control, MCP, code exec",
+  "longDescription": "Tool use, computer control, MCP, code exec",
+  "pricing": "saas",
+  "url": "https://claude.ai",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "tool-use",
+    "computer-control",
+    "mcp",
+    "code-execution"
+  ],
+  "useCases": [
+    {
+      "name": "Enterprise AI",
+      "description": "Advanced AI with tool use",
+      "impact": "Best reasoning",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

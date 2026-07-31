@@ -1,0 +1,79 @@
+{
+  "name": "apollo-io",
+  "displayName": "Apollo.io",
+  "version": "1.0.0",
+  "category": "customer-support",
+  "description": "Sales intelligence and engagement platform with 275M+ contacts",
+  "longDescription": "Apollo.io provides contact enrichment, company search, and lead generation with verified email addresses. Used for finding tour operators, travel agencies, corporate contacts, and influencer outreach.",
+  "pricing": "freemium",
+  "url": "https://www.apollo.io",
+  "documentation": "https://apolloio.github.io/apollo-api-docs/",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "people-search",
+    "organization-search",
+    "contact-enrichment",
+    "email-verification",
+    "lead-scoring",
+    "sales-intelligence",
+    "engagement",
+    "database",
+    "automation"
+  ],
+  "useCases": [
+    {
+      "name": "Sales Prospecting",
+      "description": "Find tour operators, travel agencies, and corporate contacts for partnership outreach",
+      "impact": "Real contact data vs synthetic leads",
+      "complexity": "medium"
+    },
+    {
+      "name": "Influencer Discovery",
+      "description": "Find real influencer contacts for travel/safari partnership campaigns",
+      "impact": "Verified emails for outreach",
+      "complexity": "medium"
+    },
+    {
+      "name": "Contact Enrichment",
+      "description": "Enrich existing leads with verified emails, phone numbers, and company data",
+      "impact": "Higher outreach deliverability",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [
+    {
+      "agent": "sales-prospector",
+      "file": "src/agents/sales-prospector.ts",
+      "type": "lead-discovery",
+      "description": "Apollo powers real lead discovery with verified contacts"
+    },
+    {
+      "agent": "influencer-manager",
+      "file": "src/agents/influencer-manager.ts",
+      "type": "contact-discovery",
+      "description": "Apollo finds real influencer contacts for outreach"
+    }
+  ],
+  "requirements": {
+    "env_var": "APOLLO_API_KEY",
+    "signup_url": "https://app.apollo.io/settings/integrations/api-keys",
+    "free_tier": "50 credits/month"
+  },
+  "examples": [
+    {
+      "name": "Find safari tour operators in Zimbabwe",
+      "input": "searchPeople({ titles: ['Owner', 'CEO'], keywords: ['safari'], locations: ['Zimbabwe'] })",
+      "output": "Array of verified contacts with emails"
+    },
+    {
+      "name": "Enrich a lead by email",
+      "input": "enrichPerson({ email: 'john@tourcompany.com' })",
+      "output": "Full contact profile with company data"
+    }
+  ],
+  "relatedAgents": ["sales-prospector", "influencer-manager", "lead-scorer"]
+}

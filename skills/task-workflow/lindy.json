@@ -1,0 +1,34 @@
+{
+  "name": "lindy",
+  "displayName": "Lindy",
+  "version": "1.0.0",
+  "category": "task-workflow",
+  "description": "AI agent builder for business workflows",
+  "longDescription": "AI agent builder for business workflows",
+  "pricing": "saas",
+  "url": "https://www.lindy.ai",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "agent-builder",
+    "business-workflows",
+    "no-code",
+    "enterprise"
+  ],
+  "useCases": [
+    {
+      "name": "Business Automation",
+      "description": "Build AI agents for business",
+      "impact": "No-code solution",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

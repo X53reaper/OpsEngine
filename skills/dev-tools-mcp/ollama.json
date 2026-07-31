@@ -1,0 +1,34 @@
+{
+  "name": "ollama",
+  "displayName": "Ollama",
+  "version": "1.0.0",
+  "category": "dev-tools-mcp",
+  "description": "Run LLMs locally, 162k+ stars",
+  "longDescription": "Run LLMs locally, 162k+ stars",
+  "pricing": "oss",
+  "url": "https://ollama.com",
+  "documentation": "",
+  "installCommand": "brew install ollama",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "local-llm",
+    "easy-setup",
+    "model-library",
+    "open-source"
+  ],
+  "useCases": [
+    {
+      "name": "Local AI",
+      "description": "Run LLMs locally",
+      "impact": "162k+ stars, most popular",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

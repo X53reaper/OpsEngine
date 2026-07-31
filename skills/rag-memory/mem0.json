@@ -1,0 +1,34 @@
+{
+  "name": "mem0",
+  "displayName": "Mem0",
+  "version": "1.0.0",
+  "category": "rag-memory",
+  "description": "Memory layer for agents across sessions",
+  "longDescription": "Memory layer for agents across sessions",
+  "pricing": "oss",
+  "url": "https://mem0.ai",
+  "documentation": "",
+  "installCommand": "pip install mem0ai",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "memory-layer",
+    "cross-session",
+    "persistent",
+    "agent-memory"
+  ],
+  "useCases": [
+    {
+      "name": "Agent Memory",
+      "description": "Add persistent memory to agents",
+      "impact": "Cross-session continuity",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

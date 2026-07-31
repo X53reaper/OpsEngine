@@ -1,0 +1,70 @@
+{
+  "name": "ai-agents-skills",
+  "version": "1.0.0",
+  "description": "Standardized AI agent skills for any AI system",
+  "totalSkills": 70,
+  "categories": {
+    "coding-agents": {
+      "count": 10,
+      "skills": ["cursor", "claude-code", "github-copilot", "devin", "aider", "cline", "openhands", "qodo", "bolt-new", "v0", "sweep", "codeium", "tabnine"]
+    },
+    "multi-agent-frameworks": {
+      "count": 7,
+      "skills": ["langchain", "langgraph", "crewai", "autogen", "llamaindex", "metagpt", "autogpt"]
+    },
+    "browser-web-agents": {
+      "count": 5,
+      "skills": ["openai-operator", "manus", "browser-use", "skyvern", "multion"]
+    },
+    "voice-ai": {
+      "count": 5,
+      "skills": ["elevenlabs", "vapi", "bland-ai", "livekit-agents", "rasa"]
+    },
+    "data-analytics": {
+      "count": 5,
+      "skills": ["julius-ai", "pandasai", "claude-deep-research", "gpt-researcher", "storm"]
+    },
+    "rag-memory": {
+      "count": 5,
+      "skills": ["mem0", "chroma", "weaviate", "pinecone", "ragflow"]
+    },
+    "vertical-agents": {
+      "count": 5,
+      "skills": ["woebot", "wysa", "cai", "cittaverse", "youper"]
+    },
+    "dev-tools-mcp": {
+      "count": 5,
+      "skills": ["mcp", "ollama", "open-webui", "langfuse", "openclaw"]
+    },
+    "agent-orchestration": {
+      "count": 3,
+      "skills": ["camel", "deerflow", "axme"]
+    },
+    "enterprise-platforms": {
+      "count": 5,
+      "skills": ["chatgpt", "claude", "gemini", "salesforce-einstein", "hubspot-breeze"]
+    },
+    "creative-ai": {
+      "count": 4,
+      "skills": ["midjourney", "kling", "suno", "meshy"]
+    },
+    "task-workflow": {
+      "count": 4,
+      "skills": ["n8n", "zapier-ai", "dify", "lindy"]
+    },
+    "customer-support": {
+      "count": 4,
+      "skills": ["intercom-fin", "zendesk-ai", "clay", "apollo-io"]
+    },
+    "local-selfhosted": {
+      "count": 3,
+      "skills": ["lm-studio", "jan", "librechat"]
+    }
+  },
+  "pricingTiers": {
+    "free": "Completely free to use",
+    "oss": "Open source, free to use",
+    "saas": "Software as a Service, paid subscription",
+    "enterprise": "Enterprise pricing, contact sales"
+  }
+}

@@ -1,0 +1,11 @@
+    // ── EVERY 5 MINUTES: Check new enquiries ─────────────────
+    node_cron_1.default.schedule('*/5 * * * *', async () => {
+        try {
+            const { rows: enquiries } = await ai_agent_service_1.pool.query(`SELECT * FROM enquiry_log WHERE status = 'new' ORDER BY created_at DESC LIMIT 20`);
+            if (enquiries.length > 0) {
+                ai_agent_service_1.logger.info(`Found ${enquiries.length} new enquiries to process`);
+            }
+        }
+        catch (error) {
+            ai_agent_service_1.logger.error('Enquiry check failed:', error.message);
+        }

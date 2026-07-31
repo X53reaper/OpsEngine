@@ -1,0 +1,34 @@
+{
+  "name": "n8n",
+  "displayName": "n8n",
+  "version": "1.0.0",
+  "category": "task-workflow",
+  "description": "Open-source workflow automation",
+  "longDescription": "Open-source workflow automation",
+  "pricing": "oss",
+  "url": "https://n8n.io",
+  "documentation": "",
+  "installCommand": "npm install n8n",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "workflow-automation",
+    "open-source",
+    "self-hosted",
+    "integrations"
+  ],
+  "useCases": [
+    {
+      "name": "Workflow Automation",
+      "description": "Automate any workflow",
+      "impact": "400+ integrations",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

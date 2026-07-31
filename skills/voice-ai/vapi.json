@@ -1,0 +1,34 @@
+{
+  "name": "vapi",
+  "displayName": "Vapi",
+  "version": "1.0.0",
+  "category": "voice-ai",
+  "description": "Developer-first low-latency, model-agnostic",
+  "longDescription": "Developer-first low-latency, model-agnostic",
+  "pricing": "saas",
+  "url": "https://vapi.ai",
+  "documentation": "",
+  "installCommand": "pip install vapi",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "voice-agents",
+    "low-latency",
+    "model-agnostic",
+    "developer-first"
+  ],
+  "useCases": [
+    {
+      "name": "Voice Agent Development",
+      "description": "Build voice AI applications",
+      "impact": "Developer-friendly",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

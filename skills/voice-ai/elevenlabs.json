@@ -1,0 +1,34 @@
+{
+  "name": "elevenlabs",
+  "displayName": "ElevenLabs",
+  "version": "1.0.0",
+  "category": "voice-ai",
+  "description": "Industry benchmark, 75ms latency, RAG/multimodal",
+  "longDescription": "Industry benchmark, 75ms latency, RAG/multimodal",
+  "pricing": "saas",
+  "url": "https://elevenlabs.io",
+  "documentation": "",
+  "installCommand": "pip install elevenlabs",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "text-to-speech",
+    "voice-cloning",
+    "low-latency",
+    "multimodal"
+  ],
+  "useCases": [
+    {
+      "name": "Voice Generation",
+      "description": "Generate realistic speech",
+      "impact": "Industry benchmark quality",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

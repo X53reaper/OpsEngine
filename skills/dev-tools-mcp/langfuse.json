@@ -1,0 +1,34 @@
+{
+  "name": "langfuse",
+  "displayName": "Langfuse",
+  "version": "1.0.0",
+  "category": "dev-tools-mcp",
+  "description": "OSS LLM observability, traces/evals/prompts",
+  "longDescription": "OSS LLM observability, traces/evals/prompts",
+  "pricing": "oss",
+  "url": "https://langfuse.com",
+  "documentation": "",
+  "installCommand": "pip install langfuse",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "observability",
+    "tracing",
+    "evaluations",
+    "prompts"
+  ],
+  "useCases": [
+    {
+      "name": "LLM Monitoring",
+      "description": "Monitor and debug LLM apps",
+      "impact": "Open-source alternative",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

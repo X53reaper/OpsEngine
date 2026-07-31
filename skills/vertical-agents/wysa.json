@@ -1,0 +1,34 @@
+{
+  "name": "wysa",
+  "displayName": "Wysa",
+  "version": "1.0.0",
+  "category": "vertical-agents",
+  "description": "AI mental health companion, NHS-approved",
+  "longDescription": "AI mental health companion, NHS-approved",
+  "pricing": "saas",
+  "url": "https://www.wysa.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "mental-health",
+    "nhs-approved",
+    "companion",
+    "evidence-based"
+  ],
+  "useCases": [
+    {
+      "name": "Mental Health Companion",
+      "description": "AI mental health support",
+      "impact": "NHS-approved",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

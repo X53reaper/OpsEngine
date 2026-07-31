@@ -1,0 +1,34 @@
+{
+  "name": "mcp",
+  "displayName": "MCP (Model Context Protocol)",
+  "version": "1.0.0",
+  "category": "dev-tools-mcp",
+  "description": "Anthropic open standard, 'USB-C for AI'",
+  "longDescription": "Anthropic open standard, 'USB-C for AI'",
+  "pricing": "oss",
+  "url": "https://modelcontextprotocol.io",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "standard",
+    "interoperability",
+    "tool-connection",
+    "anthropic"
+  ],
+  "useCases": [
+    {
+      "name": "Tool Integration",
+      "description": "Connect AI to any tool",
+      "impact": "Universal compatibility",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

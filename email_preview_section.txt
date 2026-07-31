@@ -1,0 +1,51 @@
+      try {
+        const { template, data, palette } = await parseBody()
+        let html = ''
+        
+        if (template === 'enquiry-acknowledgement') {
+          const { enquiryAcknowledgementEmail } = require('./services/email-template-helpers')
+          html = enquiryAcknowledgementEmail({
+            touristName: (data && data.touristName) || 'John',
+            enquiryId: (data && data.enquiryId) || 'ENQ-001',
+            destination: (data && data.destination) || 'Victoria Falls',
+            travelDates: (data && data.travelDates) || 'March 2026',
+            partySize: (data && data.partySize) || 2,
+            enquiryUrl: (data && data.enquiryUrl) || 'https://safarizetu.com/enquiry/test'
+          })
+        } else if (template === 'booking-confirmation') {
+          const { bookingConfirmationEmail } = require('./services/email-template-helpers')
+          html = bookingConfirmationEmail({
+            touristName: (data && data.touristName) || 'John',
+            bookingId: (data && data.bookingId) || 'BK-001',
+            safariName: (data && data.safariName) || 'Victoria Falls Adventure',
+            operatorName: (data && data.operatorName) || 'Safari Experts',
+            travelDates: (data && data.travelDates) || 'March 2026',
+            partySize: (data && data.partySize) || 2,
+            totalAmount: (data && data.totalAmount) || '$2,500',
+            depositPaid: (data && data.depositPaid) || '$500',
+            balanceDue: (data && data.balanceDue) || '$2,000',
+            bookingUrl: (data && data.bookingUrl) || 'https://safarizetu.com/bookings/test'
+          })
+        } else if (template === 'revenue-report') {
+          const { revenueReportEmail } = require('./services/email-template-helpers')
+          html = revenueReportEmail({
+            operatorName: (data && data.operatorName) || 'Safari Experts',
+            reportPeriod: (data && data.reportPeriod) || 'Week 24, 2026',
+            totalRevenue: (data && data.totalRevenue) || '$12,500',
+            bookingsCount: (data && data.bookingsCount) || 8,
+            averageBookingValue: (data && data.averageBookingValue) || '$1,562',
+            topSafari: (data && data.topSafari) || 'Victoria Falls Adventure',
+            conversionRate: (data && data.conversionRate) || '3.2%',
+            commissionOwed: (data && data.commissionOwed) || '$1,875'
+          })
+        } else {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Unknown template. Available: enquiry-acknowledgement, booking-confirmation, revenue-report' }))
+          return
+        }
+        
+        res.writeHead(200, { 'Content-Type': 'text/html' })
+        res.end(html)
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))

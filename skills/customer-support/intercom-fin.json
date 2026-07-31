@@ -1,0 +1,34 @@
+{
+  "name": "intercom-fin",
+  "displayName": "Intercom Fin",
+  "version": "1.0.0",
+  "category": "customer-support",
+  "description": "AI-first customer service agent",
+  "longDescription": "AI-first customer service agent",
+  "pricing": "saas",
+  "url": "https://www.intercom.com/fin",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "customer-service",
+    "ai-agent",
+    "multi-channel",
+    "enterprise"
+  ],
+  "useCases": [
+    {
+      "name": "Customer Support",
+      "description": "Automate customer support",
+      "impact": "40% resolution rate",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

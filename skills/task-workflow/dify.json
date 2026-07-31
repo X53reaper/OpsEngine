@@ -1,0 +1,34 @@
+{
+  "name": "dify",
+  "displayName": "Dify",
+  "version": "1.0.0",
+  "category": "task-workflow",
+  "description": "Open-source LLM app development platform",
+  "longDescription": "Open-source LLM app development platform",
+  "pricing": "oss",
+  "url": "https://dify.ai",
+  "documentation": "",
+  "installCommand": "pip install dify",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "llm-apps",
+    "open-source",
+    "visual-builder",
+    "rag"
+  ],
+  "useCases": [
+    {
+      "name": "LLM App Development",
+      "description": "Build LLM applications visually",
+      "impact": "Rapid development",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

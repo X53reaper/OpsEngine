@@ -1,0 +1,34 @@
+{
+  "name": "llamaindex",
+  "displayName": "LlamaIndex",
+  "version": "1.0.0",
+  "category": "multi-agent-frameworks",
+  "description": "Data-focused, best for RAG agents",
+  "longDescription": "Data-focused, best for RAG agents",
+  "pricing": "oss",
+  "url": "https://www.llamaindex.ai",
+  "documentation": "",
+  "installCommand": "pip install llama-index",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "rag",
+    "data-focused",
+    "indexing",
+    "query"
+  ],
+  "useCases": [
+    {
+      "name": "RAG Development",
+      "description": "Build retrieval-augmented generation systems",
+      "impact": "Best for data applications",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

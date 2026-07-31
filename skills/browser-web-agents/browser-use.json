@@ -1,0 +1,34 @@
+{
+  "name": "browser-use",
+  "displayName": "Browser Use",
+  "version": "1.0.0",
+  "category": "browser-web-agents",
+  "description": "OSS browser agent library",
+  "longDescription": "OSS browser agent library",
+  "pricing": "oss",
+  "url": "https://github.com/browser-use/browser-use",
+  "documentation": "",
+  "installCommand": "pip install browser-use",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "open-source",
+    "browser-control",
+    "automation",
+    "library"
+  ],
+  "useCases": [
+    {
+      "name": "Browser Automation",
+      "description": "Programmatic browser control",
+      "impact": "Custom web automation",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

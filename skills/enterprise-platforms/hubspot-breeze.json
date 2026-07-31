@@ -1,0 +1,34 @@
+{
+  "name": "hubspot-breeze",
+  "displayName": "HubSpot Breeze",
+  "version": "1.0.0",
+  "category": "enterprise-platforms",
+  "description": "Copilot, Agents, Intelligence marketplace",
+  "longDescription": "Copilot, Agents, Intelligence marketplace",
+  "pricing": "saas",
+  "url": "https://www.hubspot.com/products/breeze",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "copilot",
+    "agents",
+    "intelligence",
+    "marketing"
+  ],
+  "useCases": [
+    {
+      "name": "Marketing Automation",
+      "description": "AI-powered marketing platform",
+      "impact": "All-in-one solution",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

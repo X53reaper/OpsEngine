@@ -1,0 +1,34 @@
+{
+  "name": "cai",
+  "displayName": "CAI",
+  "version": "1.0.0",
+  "category": "vertical-agents",
+  "description": "AI pentesting, vuln discovery, red teaming",
+  "longDescription": "AI pentesting, vuln discovery, red teaming",
+  "pricing": "oss",
+  "url": "https://github.com/ProtectAI/rebuff",
+  "documentation": "",
+  "installCommand": "pip install cai",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "pentesting",
+    "vulnerability-discovery",
+    "red-teaming",
+    "security"
+  ],
+  "useCases": [
+    {
+      "name": "Security Testing",
+      "description": "AI-powered security testing",
+      "impact": "Automated red teaming",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

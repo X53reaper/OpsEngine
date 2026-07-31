@@ -1,0 +1,34 @@
+{
+  "name": "midjourney",
+  "displayName": "Midjourney v7",
+  "version": "1.0.0",
+  "category": "creative-ai",
+  "description": "Industry-leading AI image generation",
+  "longDescription": "Industry-leading AI image generation",
+  "pricing": "saas",
+  "url": "https://www.midjourney.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "image-generation",
+    "high-quality",
+    "artistic",
+    "v7"
+  ],
+  "useCases": [
+    {
+      "name": "Image Creation",
+      "description": "Generate stunning images",
+      "impact": "Industry leader",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

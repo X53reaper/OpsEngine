@@ -1,0 +1,34 @@
+{
+  "name": "openclaw",
+  "displayName": "OpenClaw",
+  "version": "1.0.0",
+  "category": "dev-tools-mcp",
+  "description": "Self-hosted agent across WhatsApp/Telegram/Slack",
+  "longDescription": "Self-hosted agent across WhatsApp/Telegram/Slack",
+  "pricing": "oss",
+  "url": "https://github.com/openclaw/openclaw",
+  "documentation": "",
+  "installCommand": "pip install openclaw",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "multi-platform",
+    "self-hosted",
+    "agent",
+    "messaging"
+  ],
+  "useCases": [
+    {
+      "name": "Multi-Platform Agent",
+      "description": "Deploy agent across messaging platforms",
+      "impact": "Unified agent experience",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

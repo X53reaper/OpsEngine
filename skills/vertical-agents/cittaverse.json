@@ -1,0 +1,34 @@
+{
+  "name": "cittaverse",
+  "displayName": "CittaVerse",
+  "version": "1.0.0",
+  "category": "vertical-agents",
+  "description": "AI-assisted reminiscence therapy for elderly cognitive training",
+  "longDescription": "AI-assisted reminiscence therapy for elderly cognitive training",
+  "pricing": "saas",
+  "url": "https://cittaverse.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "reminiscence-therapy",
+    "elderly-care",
+    "cognitive-training",
+    "healthcare"
+  ],
+  "useCases": [
+    {
+      "name": "Elderly Care",
+      "description": "AI-assisted cognitive therapy",
+      "impact": "Healthcare vertical",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

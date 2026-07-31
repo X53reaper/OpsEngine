@@ -1,0 +1,34 @@
+{
+  "name": "cline",
+  "displayName": "Cline",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "VS Code extension with terminal + browser access",
+  "longDescription": "VS Code extension with terminal + browser access",
+  "pricing": "oss",
+  "url": "https://github.com/cline/cline",
+  "documentation": "",
+  "installCommand": "code --install-extension saoudrizwan.claude-dev",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "terminal-access",
+    "browser-access",
+    "vscode-integration",
+    "autonomous"
+  ],
+  "useCases": [
+    {
+      "name": "Autonomous Tasks",
+      "description": "Run complex tasks with terminal and browser",
+      "impact": "Multi-tool automation",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

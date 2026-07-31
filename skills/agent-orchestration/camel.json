@@ -1,0 +1,34 @@
+{
+  "name": "camel",
+  "displayName": "CAMEL",
+  "version": "1.0.0",
+  "category": "agent-orchestration",
+  "description": "Role-based simulation, collaborative reasoning",
+  "longDescription": "Role-based simulation, collaborative reasoning",
+  "pricing": "oss",
+  "url": "https://github.com/camel-ai/camel",
+  "documentation": "",
+  "installCommand": "pip install camel-ai",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "role-based",
+    "simulation",
+    "collaborative",
+    "research"
+  ],
+  "useCases": [
+    {
+      "name": "Agent Simulation",
+      "description": "Simulate multi-agent interactions",
+      "impact": "Research-grade framework",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

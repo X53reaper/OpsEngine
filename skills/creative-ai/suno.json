@@ -1,0 +1,34 @@
+{
+  "name": "suno",
+  "displayName": "Suno",
+  "version": "1.0.0",
+  "category": "creative-ai",
+  "description": "AI music generation",
+  "longDescription": "AI music generation",
+  "pricing": "saas",
+  "url": "https://suno.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "music-generation",
+    "vocals",
+    "instruments",
+    "creative"
+  ],
+  "useCases": [
+    {
+      "name": "Music Creation",
+      "description": "Generate complete songs",
+      "impact": "Full music production",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

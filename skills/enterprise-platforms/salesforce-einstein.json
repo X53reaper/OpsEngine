@@ -1,0 +1,34 @@
+{
+  "name": "salesforce-einstein",
+  "displayName": "Salesforce Einstein",
+  "version": "1.0.0",
+  "category": "enterprise-platforms",
+  "description": "Predictions, autonomous agents, ChatGPT integration",
+  "longDescription": "Predictions, autonomous agents, ChatGPT integration",
+  "pricing": "enterprise",
+  "url": "https://www.salesforce.com/products/einstein/",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "predictions",
+    "autonomous-agents",
+    "crm",
+    "enterprise"
+  ],
+  "useCases": [
+    {
+      "name": "CRM AI",
+      "description": "AI-powered CRM automation",
+      "impact": "Enterprise scale",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

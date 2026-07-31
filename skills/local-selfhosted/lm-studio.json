@@ -1,0 +1,34 @@
+{
+  "name": "lm-studio",
+  "displayName": "LM Studio",
+  "version": "1.0.0",
+  "category": "local-selfhosted",
+  "description": "Run LLMs locally with GUI",
+  "longDescription": "Run LLMs locally with GUI",
+  "pricing": "free",
+  "url": "https://lmstudio.ai",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "local-llm",
+    "gui",
+    "easy-setup",
+    "multi-model"
+  ],
+  "useCases": [
+    {
+      "name": "Local AI",
+      "description": "Run LLMs locally with GUI",
+      "impact": "No coding required",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

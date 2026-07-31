@@ -1,0 +1,34 @@
+{
+  "name": "chatgpt",
+  "displayName": "ChatGPT",
+  "version": "1.0.0",
+  "category": "enterprise-platforms",
+  "description": "GPTs, Deep Research, Canvas, Agent Mode",
+  "longDescription": "GPTs, Deep Research, Canvas, Agent Mode",
+  "pricing": "saas",
+  "url": "https://chat.openai.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "gpts",
+    "deep-research",
+    "canvas",
+    "agent-mode"
+  ],
+  "useCases": [
+    {
+      "name": "General AI Assistant",
+      "description": "Multi-purpose AI platform",
+      "impact": "Most popular AI",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

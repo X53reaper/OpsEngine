@@ -1,0 +1,34 @@
+{
+  "name": "skyvern",
+  "displayName": "Skyvern",
+  "version": "1.0.0",
+  "category": "browser-web-agents",
+  "description": "Vision-driven GPT-4V navigation without coded selectors",
+  "longDescription": "Vision-driven GPT-4V navigation without coded selectors",
+  "pricing": "oss",
+  "url": "https://github.com/Skyvern-AI/skyvern",
+  "documentation": "",
+  "installCommand": "pip install skyvern",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "vision-driven",
+    "gpt-4v",
+    "no-selectors",
+    "adaptive"
+  ],
+  "useCases": [
+    {
+      "name": "Visual Navigation",
+      "description": "Navigate web pages using vision",
+      "impact": "No hardcoded selectors needed",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

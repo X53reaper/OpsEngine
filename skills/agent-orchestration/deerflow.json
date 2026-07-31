@@ -1,0 +1,34 @@
+{
+  "name": "deerflow",
+  "displayName": "DeerFlow",
+  "version": "1.0.0",
+  "category": "agent-orchestration",
+  "description": "ByteDance OSS, 25k+ stars",
+  "longDescription": "ByteDance OSS, 25k+ stars",
+  "pricing": "oss",
+  "url": "https://github.com/bytedance/deer-flow",
+  "documentation": "",
+  "installCommand": "pip install deerflow",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "bytedance",
+    "popular",
+    "flow-based",
+    "open-source"
+  ],
+  "useCases": [
+    {
+      "name": "Flow Orchestration",
+      "description": "Build complex agent flows",
+      "impact": "ByteDance backing",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

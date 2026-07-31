@@ -1,0 +1,34 @@
+{
+  "name": "qodo",
+  "displayName": "Qodo",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "AI code review with context-aware PR validation",
+  "longDescription": "AI code review with context-aware PR validation",
+  "pricing": "saas",
+  "url": "https://www.qodo.ai",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "code-review",
+    "pr-validation",
+    "context-aware",
+    "automated"
+  ],
+  "useCases": [
+    {
+      "name": "Code Review",
+      "description": "Automated PR reviews with context",
+      "impact": "Catch bugs earlier, reduce QA backlog",
+      "complexity": "low"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

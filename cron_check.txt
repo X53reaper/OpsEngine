@@ -1,0 +1,16 @@
+    // ── EVERY 5 MINUTES: Check new enquiries ─────────────────
+    node_cron_1.default.schedule('*/5 * * * *', async () => {
+        try {
+            const since = new Date(Date.now() - 6 * 60 * 1000).toISOString();
+            const { enquiries } = await (0, ai_agent_service_1.fetchFromSafariZetu)('enquiries', { since, limit: '20' });
+            if (enquiries?.length > 0) {
+                ai_agent_service_1.logger.info(`Found ${enquiries.length} new enquiries to process`);
+            }
+        }
+        catch (error) {
+            ai_agent_service_1.logger.error('Enquiry check failed:', error.message);
+        }
+    });
+    // ── EVERY 15 MINUTES: Process incoming feedback ───────────
+    node_cron_1.default.schedule('*/15 * * * *', async () => {
+        try {

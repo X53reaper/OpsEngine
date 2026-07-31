@@ -1,0 +1,49 @@
+Here's the full plan for setting up your local automation stack with Cloudflare Tunnel:
+Architecture
+Vercel (Safari Zetu App)
+    ↓ webhooks (HMAC-signed)
+Cloudflare Tunnel
+    ↓
+Homelab (your machine)
+├── cloudflared ──── ops.safarizetu.com → N8N (5678)
+│                 └── dashboard.safarizetu.com → Dashboard (3002)
+├── Docker Compose
+│   ├── PostgreSQL (5433)
+│   ├── N8N (5678)
+│   ├── Langfuse (3001)
+│   ├── Chroma (8001)
+│   └── Dashboard (3002)
+└── Ops Engine (Node.js) ── cron jobs, AI agents, Apollo integration
+Setup Steps
+1. Prerequisites
+- Install Docker Desktop for Windows
+- Install cloudflared CLI (winget install cloudflare.cloudflared)
+- Create a Cloudflare account + add safarizetu.com zone
+2. Generate Secrets
+SAFARI_ZETU_API_KEY=<random 32 chars>
+SAFARI_ZETU_WEBHOOK_SECRET=<random 64 chars>
+OPS_ENGINE_SECRET=<random 32 chars>
+POSTGRES_PASSWORD=<strong password>
+N8N_BASIC_AUTH_PASSWORD=<strong password>
+N8N_ENCRYPTION_KEY=<random 32 chars>
+3. Create Ops Engine Dockerfile
+The ops engine doesn't have one yet — needs to be created.
+4. Add Ops Engine to docker-compose.yml
+Currently missing from the compose file.
+5. Create Cloudflare Tunnel
+cloudflared tunnel login
+cloudflared tunnel create safarizetu-ops
+cloudflared tunnel route dns safarizetu-ops ops.safarizetu.com
+cloudflared tunnel route dns safarizetu-ops dashboard.safarizetu.com
+6. Update DNS in Cloudflare
+Add CNAME records pointing to the tunnel.
+7. Start Everything
+docker-compose up -d
+cloudflared tunnel run --config cloudflare-tunnel.yml
+node dist/index.js (or add ops-engine to docker-compose)
+8. Configure Vercel
+Add all environment variables to Vercel dashboard.
+Questions Before I Proceed
+1. Where is the Safari Zetu main app? Is it a separate repo on Vercel, or in this same project directory?
+2. Do you already have a Cloudflare account with safarizetu.com added?
+3. Should the ops engine run in Docker too, or directly on the host?

@@ -1,0 +1,34 @@
+{
+  "name": "woebot",
+  "displayName": "Woebot",
+  "version": "1.0.0",
+  "category": "vertical-agents",
+  "description": "CBT-based mental health chatbot, FDA-cleared",
+  "longDescription": "CBT-based mental health chatbot, FDA-cleared",
+  "pricing": "saas",
+  "url": "https://woebothealth.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "mental-health",
+    "cbt",
+    "fda-cleared",
+    "chatbot"
+  ],
+  "useCases": [
+    {
+      "name": "Mental Health Support",
+      "description": "AI-powered mental health assistance",
+      "impact": "FDA-cleared healthcare",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

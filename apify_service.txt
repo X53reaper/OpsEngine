@@ -1,0 +1,50 @@
+// Uses SerpApi + Apify to find what competitors are posting
+export async function scrapeCompetitorContent(competitorHandle: string): Promise<CompetitorContent[]> {
+  const competitor = COMPETITOR_DB.find(c => c.handle === competitorHandle || c.name === competitorHandle)
+  if (!competitor) {
+    logger.warn(`Unknown competitor: ${competitorHandle}`)
+    return []
+  }
+
+  try {
+    // Search for recent posts from this competitor using SerpApi
+    const searchResults = await searchCompetitorIntelligence(competitor.name)
+    
+    // Combine articles, news, and social results
+    const allResults = [
+      ...(searchResults.articles || []),
+      ...(searchResults.news || []),
+      ...(searchResults.social || [])
+    ]
+    
+    if (allResults.length === 0) return []
+
+    const contents: CompetitorContent[] = []
+
+    // Analyze top search results for content patterns
+    for (const result of allResults.slice(0, 8)) {
+      try {
+        // Scrape the URL for deeper content via Apify
+        let scrapedContent = ''
+        if (result.link) {
+          const scraped = await scrapeSafariSites([result.link])
+          scrapedContent = scraped[0]?.content || ''
+        }
+        
+        const analysis = await analyzeCompetitorContent(
+          competitor.name,
+          result.title || '',
+          result.snippet || '',
+          scrapedContent.substring(0, 2000) || result.snippet || ''
+        )
+
+        contents.push({
+          competitor: competitor.name,
+          platform: competitor.platform,
+          post_type: result.title?.toLowerCase().includes('reel') ? 'reel' : 
+                     result.title?.toLowerCase().includes('story') ? 'story' : 
+                     result.title?.toLowerCase().includes('ad') ? 'ad' : 'photo',
+          headline: result.title || '',
+          body: result.snippet || '',
+          cta: extractCTA(scrapedContent),
+          psychological_tactic: analysis.tactic,

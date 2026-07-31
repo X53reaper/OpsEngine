@@ -1,0 +1,331 @@
+{
+  "homepage": {
+    "url": "https://safarizetu.com",
+    "title": "Safari Zetu | Authentic Zimbabwe Safari Marketplace",
+    "bodyLength": 4126,
+    "hasListings": 6,
+    "hasImages": 14,
+    "forms": 2,
+    "links": 39,
+    "auditChecks": {
+      "statCounters": {
+        "found0Destinations": true,
+        "found0Partners": true,
+        "found0Experiences": true,
+        "found0Jobs": false,
+        "counterElements": 0
+      },
+      "estimatedCost": {
+        "foundDollarDash": true,
+        "foundEstimatedCost": true,
+        "costElements": 0
+      },
+      "searchResults": {
+        "hasResultsText": false,
+        "hasNoResults": false,
+        "listingCards": 6
+      }
+    },
+    "failedRequests": 0,
+    "failedRequestUrls": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "networkApiCalls": [
+      {
+        "url": "https://www.safarizetu.com/api/listings/featured",
+        "status": 500
+      },
+      {
+        "url": "https://www.safarizetu.com/api/consumer/activities",
+        "status": 500
+      },
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/consumer/stats",
+        "status": 500
+      },
+      {
+        "url": "https://www.safarizetu.com/api/settings",
+        "status": 500
+      },
+      {
+        "url": "https://www.safarizetu.com/api/consumer/destinations",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/hero-slides",
+        "status": 200
+      }
+    ],
+    "bodyPreview": "Skip to main content\nThis application is currently in beta. Some features may be incomplete or unstable.\nS\nSAFARI ZETU\nDESTINATIONS\nEXPERIENCES\nLODGES\nFOR OPERATORS\nBook Now\nBook Your Ultimate\nZimbabwe Safari\n\nLuxury lodges, expert-led expeditions & bespoke encounters\n\nDIRECT BOOKING WITH ZTA-VERIFIED LOCAL OPERATORS\n\nDESTINATION\nEXPERIENCE\nAll Experiences\nLuxury Lodges\nMobile Safaris\nWalking Safaris\nFamily Travel\nTRAVEL DATES\nSelect dates\nGUESTS\n2\nSEARCH SAFARIS\nZTA VERIFIED OPERATORS\nINSTANT C"
+  },
+  "search": {
+    "url": "https://safarizetu.com/search",
+    "title": "Search Safaris | Safari Zetu",
+    "bodyLength": 5000,
+    "hasListings": 0,
+    "hasImages": 12,
+    "forms": 1,
+    "links": 146,
+    "auditChecks": {
+      "statCounters": {
+        "found0Destinations": false,
+        "found0Partners": false,
+        "found0Experiences": false,
+        "found0Jobs": false,
+        "counterElements": 0
+      },
+      "estimatedCost": {
+        "foundDollarDash": false,
+        "foundEstimatedCost": false,
+        "costElements": 0
+      },
+      "searchResults": {
+        "hasResultsText": true,
+        "hasNoResults": false,
+        "listingCards": 0
+      }
+    },
+    "failedRequests": 14,
+    "failedRequestUrls": [
+      "https://www.safarizetu.com/cdn-cgi/challenge-platform/h/g/scripts/jsd/f95a7f38c08f/main.js?",
+      "https://www.safarizetu.com/destinations/cecil-rhodes-grave?_rsc=ykx89",
+      "https://www.safarizetu.com/destinations/bulawayo-railway-museum?_rsc=ykx89",
+      "https://www.safarizetu.com/destinations/bridal-veil-falls?_rsc=ykx89",
+      "https://www.safarizetu.com/destinations/binga?_rsc=ykx89"
+    ],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 500 ()"
+    ],
+    "networkApiCalls": [
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/settings",
+        "status": 500
+      }
+    ],
+    "bodyPreview": "Skip to main content\nThis application is currently in beta. Some features may be incomplete or unstable.\nS\nSAFARI ZETU\nSTART JOURNEY\nExplore Destinations\nLodges & Safaris\nProfessional Partners\nREGION\nAll\nMashonaland West\nMashonaland East\nMashonaland Central\nMatabeleland North\nMatabeleland South\nManicaland\nMasvingo\nMidlands\nHarare\nBulawayo\nBEST SEASON\nAll\nDry\nGreen\nKEY REQUIREMENTS\nUNESCO Heritage Status\nBig Five Present\nACTIVITIES\nGame Drive\nWalking Safari\nCanoe Safari\nBoat Cruise\nHiking\nCultura"
+  },
+  "lodges": {
+    "url": "https://safarizetu.com/lodges",
+    "title": "Lodge Collection | Safari Zetu",
+    "bodyLength": 2001,
+    "hasListings": 0,
+    "hasImages": 3,
+    "forms": 2,
+    "links": 34,
+    "auditChecks": {
+      "statCounters": {
+        "found0Destinations": false,
+        "found0Partners": false,
+        "found0Experiences": false,
+        "found0Jobs": false,
+        "counterElements": 0
+      },
+      "estimatedCost": {
+        "foundDollarDash": false,
+        "foundEstimatedCost": false,
+        "costElements": 0
+      },
+      "searchResults": {
+        "hasResultsText": false,
+        "hasNoResults": false,
+        "listingCards": 0
+      }
+    },
+    "failedRequests": 1,
+    "failedRequestUrls": [
+      "https://www.safarizetu.com/cdn-cgi/challenge-platform/h/g/jsd/oneshot/f95a7f38c08f/0.8720723977808928:1781899234:o_AnDDcwYNbyTJsqAMTdmNRFfB95iYhYxAyCfNzfRTE/a0e54770baff493d"
+    ],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 500 ()"
+    ],
+    "networkApiCalls": [
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/activities/unique",
+        "status": 500
+      },
+      {
+        "url": "https://www.safarizetu.com/api/settings",
+        "status": 500
+      },
+      {
+        "url": "https://www.safarizetu.com/api/listings?category=LODGE&limit=20",
+        "status": 500
+      }
+    ],
+    "bodyPreview": "Skip to main content\nThis application is currently in beta. Some features may be incomplete or unstable.\nSkip to main content\nS\nSAFARI ZETU\nDESTINATIONS\nEXPERIENCES\nLODGES\nFOR OPERATORS\nBook Now\nFind Your Lodge\n\nDiscover a curated collection of Africa's most exclusive retreats, where luxury meets wild soul and conservation is the heartbeat of every stay.\n\n01\n03\nSafari Lodge Results\nNo sanctuaries found\n\nTry adjusting your filters or search terms.\n\nFilter Sanctuaries\nAll PropertiesClassic CampsSi"
+  },
+  "experiences": {
+    "url": "https://safarizetu.com/experiences",
+    "title": "Safari Experiences | Safari Zetu",
+    "bodyLength": 1704,
+    "hasListings": 0,
+    "hasImages": 4,
+    "forms": 2,
+    "links": 28,
+    "auditChecks": {
+      "statCounters": {
+        "found0Destinations": false,
+        "found0Partners": false,
+        "found0Experiences": false,
+        "found0Jobs": false,
+        "counterElements": 0
+      },
+      "estimatedCost": {
+        "foundDollarDash": false,
+        "foundEstimatedCost": false,
+        "costElements": 0
+      },
+      "searchResults": {
+        "hasResultsText": false,
+        "hasNoResults": false,
+        "listingCards": 0
+      }
+    },
+    "failedRequests": 0,
+    "failedRequestUrls": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 500 ()"
+    ],
+    "networkApiCalls": [
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/settings",
+        "status": 500
+      },
+      {
+        "url": "https://www.safarizetu.com/api/listings?category=EXPERIENCE&limit=20",
+        "status": 500
+      }
+    ],
+    "bodyPreview": "Skip to main content\nThis application is currently in beta. Some features may be incomplete or unstable.\nS\nSAFARI ZETU\nDESTINATIONS\nEXPERIENCES\nLODGES\nFOR OPERATORS\nBook Now\nEXPERIENCE THE EXTRAORDINARY\nBeyond the Safari\n\nTranscending the Ordinary\n\nexpand_more\nCanoeing\nSleepouts\nWalking Safaris\nAerial\nInfinite Perspectives\n\nNo experiences available at this time.\n\nSignature Moments\nThe Dawn Chorus\n\nA curated orchestral performance by the wild as the first light touches the Zambezi.\n\nBush Al Fresc"
+  },
+  "destinations": {
+    "url": "https://safarizetu.com/destinations",
+    "title": "Destinations | Safari Zetu",
+    "bodyLength": 5000,
+    "hasListings": 0,
+    "hasImages": 8,
+    "forms": 2,
+    "links": 151,
+    "auditChecks": {
+      "statCounters": {
+        "found0Destinations": false,
+        "found0Partners": false,
+        "found0Experiences": false,
+        "found0Jobs": false,
+        "counterElements": 0
+      },
+      "estimatedCost": {
+        "foundDollarDash": false,
+        "foundEstimatedCost": false,
+        "costElements": 0
+      },
+      "searchResults": {
+        "hasResultsText": false,
+        "hasNoResults": false,
+        "listingCards": 0
+      }
+    },
+    "failedRequests": 0,
+    "failedRequestUrls": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 500 ()"
+    ],
+    "networkApiCalls": [
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/settings",
+        "status": 500
+      },
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      }
+    ],
+    "bodyPreview": "Skip to main content\nThis application is currently in beta. Some features may be incomplete or unstable.\nS\nSAFARI ZETU\nDESTINATIONS\nEXPERIENCES\nLODGES\nFOR OPERATORS\nBook Now\nPRIMARY CURATIONS\nIconic Regions\n\nDiscover the crown jewels of Zimbabwe. These highly sought-after destinations offer unparalleled wildlife encounters and breathtaking landscapes.\n\nWHEN TO VISIT\nSeasonal Guide\n\nThe best time to visit Zimbabwe depends largely on whether your priority is wildlife viewing, lush scenery, or avoi"
+  },
+  "itinerary": {
+    "url": "https://safarizetu.com/itinerary/new",
+    "title": "Safari Zetu | Authentic Zimbabwe Safari Marketplace",
+    "bodyLength": 1331,
+    "hasListings": 0,
+    "hasImages": 0,
+    "forms": 0,
+    "links": 5,
+    "auditChecks": {
+      "statCounters": {
+        "found0Destinations": false,
+        "found0Partners": false,
+        "found0Experiences": false,
+        "found0Jobs": false,
+        "counterElements": 0
+      },
+      "estimatedCost": {
+        "foundDollarDash": false,
+        "foundEstimatedCost": false,
+        "costElements": 0
+      },
+      "searchResults": {
+        "hasResultsText": false,
+        "hasNoResults": false,
+        "listingCards": 0
+      }
+    },
+    "failedRequests": 0,
+    "failedRequestUrls": [],
+    "consoleErrors": [],
+    "networkApiCalls": [
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      },
+      {
+        "url": "https://www.safarizetu.com/api/auth/session",
+        "status": 200
+      }
+    ],
+    "bodyPreview": "Skip to main content\nThis application is currently in beta. Some features may be incomplete or unstable.\nSTEP 01 OF 04\nYour Expedition Profile\nTravel Logistics\nPREFERRED SEASON\nTRAVELERS\nService Tier\nCOMPARE TIERS\nAUTHENTIC\nClassic\n\nElegant canvas tents and immersive proximity to the wild.\n\nRECOMMENDED\nSignature\n\nThe pinnacle of Zimbabwean hospitality with private plunge pools.\n\nULTRA-LUXE\nPremier\n\nExclusive-use villas and bespoke private air charter links.\n\nFocus of Exploration\nWILDLIFE\nNATURE\n"
+  }
+}

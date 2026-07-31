@@ -1,0 +1,34 @@
+{
+  "name": "gemini",
+  "displayName": "Gemini",
+  "version": "1.0.0",
+  "category": "enterprise-platforms",
+  "description": "Deep Think, Gems, multi-modal, 1M tokens",
+  "longDescription": "Deep Think, Gems, multi-modal, 1M tokens",
+  "pricing": "saas",
+  "url": "https://gemini.google.com",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "deep-think",
+    "gems",
+    "multi-modal",
+    "long-context"
+  ],
+  "useCases": [
+    {
+      "name": "Multi-modal AI",
+      "description": "Process text, images, video",
+      "impact": "1M token context",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

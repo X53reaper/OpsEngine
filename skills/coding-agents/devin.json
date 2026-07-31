@@ -1,0 +1,35 @@
+{
+  "name": "devin",
+  "displayName": "Devin",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "Fully autonomous software engineer with sandboxed cloud env",
+  "longDescription": "Fully autonomous software engineer with sandboxed cloud env",
+  "pricing": "enterprise",
+  "url": "https://www.cognition.ai",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "autonomous-coding",
+    "cloud-sandbox",
+    "full-stack",
+    "testing",
+    "deployment"
+  ],
+  "useCases": [
+    {
+      "name": "Feature Development",
+      "description": "End-to-end feature implementation from spec",
+      "impact": "Solo devs build like 100-person teams",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

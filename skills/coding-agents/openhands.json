@@ -1,0 +1,34 @@
+{
+  "name": "openhands",
+  "displayName": "OpenHands",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "OSS autonomous software engineer",
+  "longDescription": "OSS autonomous software engineer",
+  "pricing": "oss",
+  "url": "https://github.com/All-Hands-AI/OpenHands",
+  "documentation": "",
+  "installCommand": "pip install openhands",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "autonomous",
+    "open-source",
+    "full-stack",
+    "docker-sandbox"
+  ],
+  "useCases": [
+    {
+      "name": "Open Source Development",
+      "description": "Contribute to OSS projects autonomously",
+      "impact": "Community-driven development",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

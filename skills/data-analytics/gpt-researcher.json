@@ -1,0 +1,34 @@
+{
+  "name": "gpt-researcher",
+  "displayName": "GPT Researcher",
+  "version": "1.0.0",
+  "category": "data-analytics",
+  "description": "OSS autonomous comprehensive research",
+  "longDescription": "OSS autonomous comprehensive research",
+  "pricing": "oss",
+  "url": "https://github.com/assafelovic/gpt-researcher",
+  "documentation": "",
+  "installCommand": "pip install gpt-researcher",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "autonomous",
+    "research",
+    "comprehensive",
+    "open-source"
+  ],
+  "useCases": [
+    {
+      "name": "Market Research",
+      "description": "Autonomous market research",
+      "impact": "Automated research reports",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

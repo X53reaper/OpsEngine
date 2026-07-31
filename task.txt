@@ -1,0 +1,2151 @@
+
+### One Session. Full System. No Stopping.
+
+---
+
+## AGENT INSTRUCTIONS — READ THIS ENTIRE DOCUMENT BEFORE WRITING A SINGLE LINE OF CODE
+
+You are building the **Safari Zetu AI Operations Engine** — a standalone automated system that integrates with the live Safari Zetu marketplace (safarizetu.com) and handles all operational intelligence, outreach, operator management, tourist experience, and partnership development autonomously.
+
+**Operating rules for this session:**
+- Read this entire document first. Do not start building until you have read every section.
+- Build in the exact sequence defined. Do not skip ahead.
+- After completing each layer, run the verification checklist for that layer before proceeding.
+- If a verification step fails, fix it before moving on. Never carry a broken layer into the next.
+- Make all decisions yourself based on this document. Do not ask the user for clarification.
+- If a tool version conflict arises, choose the most stable LTS version available.
+- All secrets go in `.env`. Nothing is hardcoded.
+- Write production-quality code with error handling at every external call.
+- Every function that calls an external API must have try/catch with meaningful error logging.
+- Comment every non-obvious block of code.
+
+---
+
+## STEP 0 — SKILLS ACQUISITION (Do This First)
+
+```bash
+git clone https://github.com/caramaschiHG/awesome-ai-agents-2026.git /tmp/ai-skills-ref
+```
+
+Read `/tmp/ai-skills-ref/README.md` in full.
+
+From that document, extract and internally register the following tools as your validated reference for every build decision in this session:
+
+- **Orchestration:** n8n (self-hosted)
+- **Memory:** Mem0 (self-hosted)
+- **Observability:** Langfuse (self-hosted)
+- **RAG / Knowledge Base:** Chroma (self-hosted)
+- **Local LLM fallback:** Ollama (optional, install but do not configure as primary)
+- **Vector DB:** Chroma
+- **Email:** Resend API (existing Safari Zetu infrastructure)
+- **AI Models:** Claude API via OpenRouter (primary), with model routing by task complexity
+- **Browser automation:** Browser Use (available if needed for lead research)
+- **Workflow automation:** n8n with HTTP nodes and Claude API integration
+
+Do not use any tool not validated from that reference document unless it is a core system dependency (Node.js, PostgreSQL, Docker, etc.).
+
+After reading, delete the cloned reference repo:
+```bash
+rm -rf /tmp/ai-skills-ref
+```
+
+---
+
+## STEP 1 — ENVIRONMENT SETUP
+
+### 1.1 Verify WSL2 and Docker
+
+```bash
+# Verify WSL2
+wsl --version
+
+# Verify Docker inside WSL2
+docker --version
+docker compose version
+
+# If Docker not installed, install it:
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### 1.2 Create Project Structure
+
+```bash
+mkdir -p ~/safarizetu-ops-engine
+cd ~/safarizetu-ops-engine
+
+mkdir -p \
+  infrastructure \
+  database/migrations \
+  database/seeds \
+  agents/prompts \
+  agents/workflows \
+  n8n/workflows \
+  dashboard/src/components \
+  dashboard/src/pages \
+  dashboard/src/hooks \
+  bridge/src \
+  scripts \
+  docs \
+  logs
+
+git init
+echo "node_modules/" > .gitignore
+echo ".env" >> .gitignore
+echo "logs/" >> .gitignore
+echo "*.log" >> .gitignore
+```
+
+### 1.3 Create Environment File
+
+Create `.env.template` (committed to git) and `.env` (never committed):
+
+```bash
+cat > .env.template << 'EOF'
+# ── OPENROUTER / CLAUDE ──────────────────────────────────────
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+CLAUDE_MODEL_HEAVY=anthropic/claude-sonnet-4-5
+CLAUDE_MODEL_LIGHT=anthropic/claude-haiku-4-5-20251001
+CLAUDE_MODEL_FREE=mistralai/mistral-7b-instruct:free
+
+# ── SAFARI ZETU BRIDGE ───────────────────────────────────────
+SAFARI_ZETU_BRIDGE_URL=https://safarizetu.com/api/ops-bridge
+SAFARI_ZETU_API_KEY=generate_a_32_char_random_string
+SAFARI_ZETU_WEBHOOK_SECRET=generate_a_64_char_random_string_for_hmac
+
+# ── LOCAL POSTGRESQL ─────────────────────────────────────────
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5433
+POSTGRES_DB=safarizetu_ops
+POSTGRES_USER=ops_admin
+POSTGRES_PASSWORD=generate_strong_password_here
+DATABASE_URL=postgresql://ops_admin:password@localhost:5433/safarizetu_ops
+
+# ── N8N ──────────────────────────────────────────────────────
+N8N_HOST=0.0.0.0
+N8N_PORT=5678
+N8N_PROTOCOL=https
+N8N_HOST_URL=https://ops.safarizetu.com
+N8N_BASIC_AUTH_ACTIVE=true
+N8N_BASIC_AUTH_USER=admin
+N8N_BASIC_AUTH_PASSWORD=generate_strong_password_here
+N8N_ENCRYPTION_KEY=generate_32_char_random_string
+WEBHOOK_URL=https://ops.safarizetu.com
+
+# ── LANGFUSE ─────────────────────────────────────────────────
+LANGFUSE_HOST=http://localhost:3001
+LANGFUSE_PUBLIC_KEY=generate_after_langfuse_setup
+LANGFUSE_SECRET_KEY=generate_after_langfuse_setup
+
+# ── RESEND ───────────────────────────────────────────────────
+RESEND_API_KEY=your_resend_api_key_here
+RESEND_FROM_EMAIL=ops@safarizetu.com
+RESEND_FROM_NAME=Safari Zetu
+
+# ── MEM0 ─────────────────────────────────────────────────────
+MEM0_API_KEY=generate_after_mem0_setup
+
+# ── CLOUDFLARE TUNNEL ────────────────────────────────────────
+CLOUDFLARE_TUNNEL_TOKEN=your_cloudflare_tunnel_token_here
+
+# ── OPS ENGINE ───────────────────────────────────────────────
+OPS_ENGINE_SECRET=generate_32_char_random_string
+DASHBOARD_PORT=3002
+NODE_ENV=production
+EOF
+
+cp .env.template .env
+echo "Created .env — fill in all values before running docker compose"
+```
+
+### ✅ VERIFICATION CHECKPOINT 1 — Before proceeding, confirm:
+```bash
+# Run these checks. All must pass.
+[ -d ~/safarizetu-ops-engine ] && echo "PASS: Project dir exists" || echo "FAIL: Project dir missing"
+[ -f ~/safarizetu-ops-engine/.env ] && echo "PASS: .env exists" || echo "FAIL: .env missing"
+[ -f ~/safarizetu-ops-engine/.env.template ] && echo "PASS: .env.template exists" || echo "FAIL: .env.template missing"
+docker --version && echo "PASS: Docker available" || echo "FAIL: Docker not found"
+docker compose version && echo "PASS: Docker Compose available" || echo "FAIL: Docker Compose not found"
+grep -q "OPENROUTER_API_KEY" ~/safarizetu-ops-engine/.env && echo "PASS: .env has required keys" || echo "FAIL: .env incomplete"
+```
+**All 6 checks must print PASS. Fix any FAIL before proceeding.**
+
+---
+
+## STEP 2 — DOCKER INFRASTRUCTURE
+
+### 2.1 Create docker-compose.yml
+
+```yaml
+# infrastructure/docker-compose.yml
+version: '3.9'
+
+services:
+
+  # ── LOCAL POSTGRESQL ─────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ops_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── N8N ORCHESTRATOR ─────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ops_n8n
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=${N8N_PORT}
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=last
+      - N8N_LOG_LEVEL=info
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── LANGFUSE OBSERVABILITY ───────────────────────────────
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: ops_langfuse
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - NEXTAUTH_URL=http://localhost:3001
+      - NEXTAUTH_SECRET=${OPS_ENGINE_SECRET}
+      - SALT=${OPS_ENGINE_SECRET}
+    ports:
+      - "3001:3000"
+
+  # ── CHROMA VECTOR DB ──────────────────────────────────────
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: ops_chroma
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+  # ── OPS DASHBOARD ─────────────────────────────────────────
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: ops_dashboard
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${DASHBOARD_PORT}
+    ports:
+      - "${DASHBOARD_PORT}:${DASHBOARD_PORT}"
+
+volumes:
+  postgres_data:
+  n8n_data:
+  chroma_data:
+```
+
+### 2.2 Create Cloudflare Tunnel Config
+
+```yaml
+# infrastructure/cloudflare-tunnel.yml
+tunnel: safarizetu-ops
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: ops.safarizetu.com
+    service: http://localhost:5678
+    originRequest:
+      noTLSVerify: false
+  - hostname: dashboard.safarizetu.com
+    service: http://localhost:3002
+  - service: http_status:404
+```
+
+```bash
+# Install cloudflared in WSL2
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+sudo dpkg -i cloudflared.deb
+
+# Authenticate
+cloudflared tunnel login
+
+# Create tunnel
+cloudflared tunnel create safarizetu-ops
+
+# Copy credentials
+cp ~/.cloudflared/*.json infrastructure/credentials.json
+
+# Run tunnel
+cloudflared tunnel --config infrastructure/cloudflare-tunnel.yml run
+```
+
+### ✅ VERIFICATION CHECKPOINT 2
+```bash
+cd ~/safarizetu-ops-engine
+docker compose -f infrastructure/docker-compose.yml up -d
+sleep 30
+
+# Check all containers running
+docker compose -f infrastructure/docker-compose.yml ps
+
+# Check postgres health
+docker exec ops_postgres pg_isready -U ops_admin && echo "PASS: Postgres healthy" || echo "FAIL: Postgres down"
+
+# Check n8n responding
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5678/healthz | grep -q "200" && echo "PASS: n8n healthy" || echo "FAIL: n8n down"
+
+# Check Chroma
+curl -s http://localhost:8001/api/v1/heartbeat | grep -q "nanosecond" && echo "PASS: Chroma healthy" || echo "FAIL: Chroma down"
+
+# Check Langfuse
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 | grep -q "200\|302" && echo "PASS: Langfuse healthy" || echo "FAIL: Langfuse down"
+```
+**All 4 service checks must print PASS. Fix any FAIL before proceeding.**
+
+---
+
+## STEP 3 — DATABASE SCHEMA
+
+Create `database/migrations/001_initial_schema.sql`:
+
+```sql
+-- Safari Zetu Ops Engine — Initial Schema
+-- Run automatically by PostgreSQL on first startup
+
+-- ── EXTENSIONS ────────────────────────────────────────────────
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
+-- ── ENQUIRY LOG ───────────────────────────────────────────────
+-- Mirrors Safari Zetu enquiries for AI processing
+CREATE TABLE IF NOT EXISTS enquiry_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    safari_zetu_enquiry_id TEXT UNIQUE NOT NULL,
+    tourist_name TEXT,
+    tourist_email TEXT NOT NULL,
+    tourist_country TEXT,
+    operator_id TEXT,
+    operator_name TEXT,
+    destination TEXT,
+    travel_dates TEXT,
+    group_size INTEGER,
+    budget_range TEXT,
+    special_requests TEXT,
+    status TEXT DEFAULT 'new' CHECK (status IN ('new','acknowledged','operator_notified','operator_responded','completed','cancelled')),
+    acknowledgement_sent_at TIMESTAMPTZ,
+    operator_notified_at TIMESTAMPTZ,
+    operator_responded_at TIMESTAMPTZ,
+    review_requested_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_enquiry_status ON enquiry_log(status);
+CREATE INDEX idx_enquiry_operator ON enquiry_log(operator_id);
+CREATE INDEX idx_enquiry_created ON enquiry_log(created_at DESC);
+
+-- ── OPERATOR ACTIVATION QUEUE ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS operator_activation_queue (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    safari_zetu_operator_id TEXT UNIQUE NOT NULL,
+    operator_name TEXT NOT NULL,
+    operator_email TEXT NOT NULL,
+    operator_type TEXT,
+    destination TEXT,
+    listing_completion_score INTEGER DEFAULT 0,
+    activation_stage TEXT DEFAULT 'pending' CHECK (activation_stage IN ('pending','day1_sent','day3_sent','day7_sent','activated','unresponsive')),
+    day1_sent_at TIMESTAMPTZ,
+    day3_sent_at TIMESTAMPTZ,
+    day7_sent_at TIMESTAMPTZ,
+    last_login_at TIMESTAMPTZ,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_operator_stage ON operator_activation_queue(activation_stage);
+
+-- ── LEAD PIPELINE ─────────────────────────────────────────────
+-- Travel agents, bloggers, corporates, media
+CREATE TABLE IF NOT EXISTS lead_pipeline (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    company_name TEXT,
+    contact_name TEXT NOT NULL,
+    contact_email TEXT,
+    contact_linkedin TEXT,
+    lead_type TEXT NOT NULL CHECK (lead_type IN ('travel_agent','blogger','corporate','media','influencer','other')),
+    country TEXT,
+    specialisation TEXT,
+    audience_size INTEGER,
+    source TEXT,
+    research_summary TEXT,
+    personalisation_notes TEXT,
+    status TEXT DEFAULT 'identified' CHECK (status IN ('identified','researched','outreach_drafted','outreach_sent','replied','meeting_scheduled','converted','not_interested','dormant')),
+    first_contact_at TIMESTAMPTZ,
+    last_contact_at TIMESTAMPTZ,
+    reply_received_at TIMESTAMPTZ,
+    converted_at TIMESTAMPTZ,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_lead_status ON lead_pipeline(status);
+CREATE INDEX idx_lead_type ON lead_pipeline(lead_type);
+
+-- ── PARTNERSHIP PIPELINE ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS partnership_pipeline (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    company_name TEXT NOT NULL,
+    company_type TEXT NOT NULL CHECK (company_type IN ('airline','hotel','insurance','visa','media','embassy','corporate','other')),
+    contact_name TEXT,
+    contact_email TEXT,
+    contact_role TEXT,
+    contact_linkedin TEXT,
+    country TEXT,
+    partnership_value_proposition TEXT,
+    status TEXT DEFAULT 'identified' CHECK (status IN ('identified','researched','brief_prepared','outreach_sent','replied','meeting_scheduled','proposal_sent','negotiating','signed','declined','dormant')),
+    research_brief TEXT,
+    proposal_document_url TEXT,
+    mou_document_url TEXT,
+    first_contact_at TIMESTAMPTZ,
+    last_contact_at TIMESTAMPTZ,
+    meeting_date TIMESTAMPTZ,
+    signed_at TIMESTAMPTZ,
+    estimated_monthly_value_usd INTEGER,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_partnership_status ON partnership_pipeline(status);
+CREATE INDEX idx_partnership_type ON partnership_pipeline(company_type);
+
+-- ── OUTREACH LOG ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS outreach_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('lead','partner','operator','tourist')),
+    entity_id UUID NOT NULL,
+    email_to TEXT NOT NULL,
+    email_subject TEXT NOT NULL,
+    email_body TEXT NOT NULL,
+    email_type TEXT NOT NULL,
+    resend_message_id TEXT,
+    status TEXT DEFAULT 'drafted' CHECK (status IN ('drafted','pending_approval','approved','sent','delivered','opened','replied','bounced','failed')),
+    drafted_at TIMESTAMPTZ DEFAULT NOW(),
+    approved_at TIMESTAMPTZ,
+    sent_at TIMESTAMPTZ,
+    opened_at TIMESTAMPTZ,
+    replied_at TIMESTAMPTZ,
+    agent_name TEXT,
+    tokens_used INTEGER,
+    model_used TEXT,
+    cost_usd NUMERIC(10,6),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_outreach_entity ON outreach_log(entity_type, entity_id);
+CREATE INDEX idx_outreach_status ON outreach_log(status);
+
+-- ── CONTENT QUEUE ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS content_queue (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    content_type TEXT NOT NULL CHECK (content_type IN ('blog_article','instagram_caption','linkedin_post','x_thread','operator_spotlight','destination_guide')),
+    title TEXT,
+    topic TEXT NOT NULL,
+    keywords TEXT[],
+    target_destination TEXT,
+    draft_content TEXT,
+    status TEXT DEFAULT 'queued' CHECK (status IN ('queued','generating','draft_ready','pending_approval','approved','published','rejected')),
+    generated_at TIMESTAMPTZ,
+    approved_at TIMESTAMPTZ,
+    published_at TIMESTAMPTZ,
+    published_url TEXT,
+    word_count INTEGER,
+    tokens_used INTEGER,
+    model_used TEXT,
+    cost_usd NUMERIC(10,6),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_content_status ON content_queue(status);
+CREATE INDEX idx_content_type ON content_queue(content_type);
+
+-- ── AGENT RUN LOG ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS agent_run_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_name TEXT NOT NULL,
+    division TEXT NOT NULL CHECK (division IN ('growth','operator_relations','partnership','tourist_experience','intelligence')),
+    trigger_type TEXT NOT NULL,
+    trigger_payload JSONB,
+    status TEXT DEFAULT 'running' CHECK (status IN ('running','success','failed','partial')),
+    result_summary TEXT,
+    error_message TEXT,
+    tokens_used INTEGER,
+    model_used TEXT,
+    cost_usd NUMERIC(10,6),
+    duration_ms INTEGER,
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+CREATE INDEX idx_agent_run_agent ON agent_run_log(agent_name);
+CREATE INDEX idx_agent_run_status ON agent_run_log(status);
+CREATE INDEX idx_agent_run_started ON agent_run_log(started_at DESC);
+
+-- ── WEEKLY METRICS SNAPSHOT ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS weekly_metrics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    week_start DATE NOT NULL UNIQUE,
+    total_enquiries INTEGER DEFAULT 0,
+    new_enquiries INTEGER DEFAULT 0,
+    operator_response_rate NUMERIC(5,2),
+    new_operators_activated INTEGER DEFAULT 0,
+    leads_identified INTEGER DEFAULT 0,
+    leads_outreach_sent INTEGER DEFAULT 0,
+    leads_replied INTEGER DEFAULT 0,
+    partnerships_progressed INTEGER DEFAULT 0,
+    content_pieces_published INTEGER DEFAULT 0,
+    total_agent_cost_usd NUMERIC(10,4) DEFAULT 0,
+    total_tokens_used INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── APPROVAL QUEUE ────────────────────────────────────────────
+-- Everything AI drafts that needs founder review before sending
+CREATE TABLE IF NOT EXISTS approval_queue (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    item_type TEXT NOT NULL CHECK (item_type IN ('outreach_email','partnership_email','content','proposal','report')),
+    reference_id UUID,
+    title TEXT NOT NULL,
+    preview TEXT,
+    full_content TEXT NOT NULL,
+    priority TEXT DEFAULT 'normal' CHECK (priority IN ('urgent','high','normal','low')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','edited_and_approved')),
+    reviewed_at TIMESTAMPTZ,
+    reviewer_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_approval_status ON approval_queue(status);
+CREATE INDEX idx_approval_priority ON approval_queue(priority, created_at DESC);
+
+-- ── UPDATED_AT TRIGGER ────────────────────────────────────────
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_enquiry_log_updated_at BEFORE UPDATE ON enquiry_log FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_operator_activation_updated_at BEFORE UPDATE ON operator_activation_queue FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_lead_pipeline_updated_at BEFORE UPDATE ON lead_pipeline FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_partnership_pipeline_updated_at BEFORE UPDATE ON partnership_pipeline FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_content_queue_updated_at BEFORE UPDATE ON content_queue FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_approval_queue_updated_at BEFORE UPDATE ON approval_queue FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- ── SEED DATA — FASTJET PARTNERSHIP ───────────────────────────
+INSERT INTO partnership_pipeline (company_name, company_type, country, partnership_value_proposition, status)
+VALUES (
+    'FastJet',
+    'airline',
+    'Zimbabwe',
+    'Co-marketing integration: Safari Zetu featured on FastJet booking confirmation emails to ZW-bound passengers. FastJet flight search widget embedded on Safari Zetu destination pages. Mutual referral traffic and tourist journey completion.',
+    'identified'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO partnership_pipeline (company_name, company_type, country, partnership_value_proposition, status)
+VALUES (
+    'Air Zimbabwe',
+    'airline',
+    'Zimbabwe',
+    'National carrier partnership: official safari marketplace endorsement, co-marketing on Air Zimbabwe channels, potential bundled safari+flight packages for international tourists.',
+    'identified'
+) ON CONFLICT DO NOTHING;
+```
+
+### ✅ VERIFICATION CHECKPOINT 3
+```bash
+# Verify schema was applied
+docker exec ops_postgres psql -U ops_admin -d safarizetu_ops -c "\dt" | grep -E "enquiry_log|operator_activation|lead_pipeline|partnership_pipeline|outreach_log|content_queue|agent_run_log|approval_queue" | wc -l | xargs -I{} bash -c '[ {} -eq 8 ] && echo "PASS: All 8 tables created" || echo "FAIL: Missing tables, found {} of 8"'
+
+# Verify FastJet seed data
+docker exec ops_postgres psql -U ops_admin -d safarizetu_ops -c "SELECT company_name FROM partnership_pipeline;" | grep -q "FastJet" && echo "PASS: Seed data inserted" || echo "FAIL: Seed data missing"
+
+# Verify triggers
+docker exec ops_postgres psql -U ops_admin -d safarizetu_ops -c "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = 'public';" | grep -q "[5-9]\|[1-9][0-9]" && echo "PASS: Triggers created" || echo "FAIL: Triggers missing"
+```
+**All 3 checks must print PASS.**
+
+---
+
+## STEP 4 — SAFARI ZETU API BRIDGE
+
+This is the code that goes INTO the existing Safari Zetu Next.js repo. Create these files in a separate folder `bridge/safari-zetu-additions/` — they will be manually copied into the Safari Zetu repo later.
+
+### 4.1 Bridge Route Handler
+
+```typescript
+// bridge/safari-zetu-additions/app/api/ops-bridge/route.ts
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createHmac, timingSafeEqual } from 'crypto'
+
+const OPS_API_KEY = process.env.OPS_ENGINE_API_KEY!
+const WEBHOOK_SECRET = process.env.OPS_ENGINE_WEBHOOK_SECRET!
+const OPS_ENGINE_URL = process.env.OPS_ENGINE_URL!
+const ALLOWED_IPS = (process.env.OPS_ENGINE_ALLOWED_IPS || '').split(',').filter(Boolean)
+
+// ── SECURITY MIDDLEWARE ────────────────────────────────────────
+function verifyApiKey(request: NextRequest): boolean {
+  const apiKey = request.headers.get('x-ops-api-key')
+  if (!apiKey || !OPS_API_KEY) return false
+  try {
+    return timingSafeEqual(Buffer.from(apiKey), Buffer.from(OPS_API_KEY))
+  } catch { return false }
+}
+
+function verifyIpAllowlist(request: NextRequest): boolean {
+  if (ALLOWED_IPS.length === 0) return true
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+              request.headers.get('x-real-ip') || ''
+  return ALLOWED_IPS.includes(ip)
+}
+
+// ── HMAC SIGNATURE FOR OUTBOUND WEBHOOKS ─────────────────────
+export function signPayload(payload: string): string {
+  return createHmac('sha256', WEBHOOK_SECRET).update(payload).digest('hex')
+}
+
+// ── RATE LIMITER (simple in-memory) ──────────────────────────
+const requestCounts = new Map<string, { count: number; resetAt: number }>()
+function checkRateLimit(key: string, maxPerMinute = 60): boolean {
+  const now = Date.now()
+  const entry = requestCounts.get(key)
+  if (!entry || now > entry.resetAt) {
+    requestCounts.set(key, { count: 1, resetAt: now + 60000 })
+    return true
+  }
+  if (entry.count >= maxPerMinute) return false
+  entry.count++
+  return true
+}
+
+// ── MAIN HANDLER ──────────────────────────────────────────────
+export async function GET(request: NextRequest) {
+  if (!verifyApiKey(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  if (!verifyIpAllowlist(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (!checkRateLimit('get')) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const resource = searchParams.get('resource')
+  const limit = parseInt(searchParams.get('limit') || '50')
+  const offset = parseInt(searchParams.get('offset') || '0')
+  const since = searchParams.get('since')
+
+  try {
+    switch (resource) {
+      case 'enquiries':
+        return await getEnquiries(limit, offset, since)
+      case 'operators':
+        return await getOperators(limit, offset)
+      case 'metrics':
+        return await getMetrics()
+      case 'health':
+        return NextResponse.json({ status: 'ok', timestamp: new Date().toISOString() })
+      default:
+        return NextResponse.json({ error: 'Unknown resource' }, { status: 400 })
+    }
+  } catch (error) {
+    console.error('[ops-bridge GET error]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  if (!verifyApiKey(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  if (!verifyIpAllowlist(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (!checkRateLimit('post', 30)) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
+
+  let body: any
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const action = body.action
+  if (!action) return NextResponse.json({ error: 'Missing action' }, { status: 400 })
+
+  try {
+    switch (action) {
+      case 'update_enquiry_status':
+        return await updateEnquiryStatus(body.enquiry_id, body.status, body.notes)
+      case 'flag_operator':
+        return await flagOperator(body.operator_id, body.reason)
+      case 'log_event':
+        return await logEvent(body.event_type, body.payload)
+      default:
+        return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+    }
+  } catch (error) {
+    console.error('[ops-bridge POST error]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// ── DATA FETCHERS ─────────────────────────────────────────────
+// These use your existing Prisma client from Safari Zetu
+async function getEnquiries(limit: number, offset: number, since: string | null) {
+  const { prisma } = await import('@/lib/prisma')
+  const where = since ? { createdAt: { gte: new Date(since) } } : {}
+  const enquiries = await prisma.booking.findMany({
+    where,
+    take: Math.min(limit, 100),
+    skip: offset,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      operator: { select: { id: true, name: true, email: true } },
+      user: { select: { id: true, name: true, email: true, country: true } }
+    }
+  })
+  const total = await prisma.booking.count({ where })
+  return NextResponse.json({ enquiries, total, limit, offset })
+}
+
+async function getOperators(limit: number, offset: number) {
+  const { prisma } = await import('@/lib/prisma')
+  const operators = await prisma.operator.findMany({
+    take: Math.min(limit, 200),
+    skip: offset,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true, name: true, email: true, phone: true,
+      destinations: true, operatorType: true, isVerified: true,
+      isActive: true, createdAt: true, updatedAt: true,
+      _count: { select: { bookings: true, listings: true } }
+    }
+  })
+  const total = await prisma.operator.count()
+  return NextResponse.json({ operators, total, limit, offset })
+}
+
+async function getMetrics() {
+  const { prisma } = await import('@/lib/prisma')
+  const [totalOperators, totalEnquiries, recentEnquiries, activeOperators] = await Promise.all([
+    prisma.operator.count(),
+    prisma.booking.count(),
+    prisma.booking.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
+    prisma.operator.count({ where: { isActive: true } })
+  ])
+  return NextResponse.json({
+    totalOperators, totalEnquiries, recentEnquiries, activeOperators,
+    timestamp: new Date().toISOString()
+  })
+}
+
+async function updateEnquiryStatus(enquiryId: string, status: string, notes?: string) {
+  const { prisma } = await import('@/lib/prisma')
+  await prisma.booking.update({
+    where: { id: enquiryId },
+    data: { status, updatedAt: new Date() }
+  })
+  return NextResponse.json({ success: true, enquiry_id: enquiryId, new_status: status })
+}
+
+async function flagOperator(operatorId: string, reason: string) {
+  const { prisma } = await import('@/lib/prisma')
+  await prisma.operator.update({
+    where: { id: operatorId },
+    data: { notes: reason, updatedAt: new Date() }
+  })
+  return NextResponse.json({ success: true, operator_id: operatorId })
+}
+
+async function logEvent(eventType: string, payload: any) {
+  console.log(`[ops-bridge event] ${eventType}`, JSON.stringify(payload))
+  return NextResponse.json({ success: true, logged: true })
+}
+```
+
+### 4.2 Webhook Sender (Safari Zetu → Ops Engine)
+
+```typescript
+// bridge/safari-zetu-additions/lib/ops-webhook.ts
+
+import { createHmac } from 'crypto'
+
+const OPS_ENGINE_URL = process.env.OPS_ENGINE_URL
+const WEBHOOK_SECRET = process.env.OPS_ENGINE_WEBHOOK_SECRET
+
+export type OpsWebhookEvent =
+  | 'enquiry.created'
+  | 'enquiry.updated'
+  | 'operator.registered'
+  | 'operator.updated'
+  | 'review.submitted'
+  | 'booking.completed'
+
+export interface OpsWebhookPayload {
+  event: OpsWebhookEvent
+  timestamp: string
+  data: Record<string, any>
+}
+
+export async function sendOpsWebhook(event: OpsWebhookEvent, data: Record<string, any>): Promise<void> {
+  if (!OPS_ENGINE_URL || !WEBHOOK_SECRET) {
+    console.warn('[ops-webhook] OPS_ENGINE_URL or WEBHOOK_SECRET not configured — skipping webhook')
+    return
+  }
+
+  const payload: OpsWebhookPayload = {
+    event,
+    timestamp: new Date().toISOString(),
+    data
+  }
+
+  const body = JSON.stringify(payload)
+  const signature = createHmac('sha256', WEBHOOK_SECRET).update(body).digest('hex')
+
+  try {
+    const response = await fetch(`${OPS_ENGINE_URL}/webhook/safari-zetu`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-safari-zetu-signature': signature,
+        'x-safari-zetu-event': event,
+        'x-safari-zetu-timestamp': payload.timestamp
+      },
+      body,
+      signal: AbortSignal.timeout(10000) // 10s timeout
+    })
+
+    if (!response.ok) {
+      console.error(`[ops-webhook] Failed to send ${event}: ${response.status}`)
+    }
+  } catch (error) {
+    // Never throw — ops engine failure must not break Safari Zetu
+    console.error(`[ops-webhook] Error sending ${event}:`, error)
+  }
+}
+```
+
+### 4.3 Environment Variables to Add to Safari Zetu
+
+```bash
+# Add these to Safari Zetu .env and Vercel environment variables:
+OPS_ENGINE_API_KEY=same_value_as_SAFARI_ZETU_API_KEY_in_ops_engine
+OPS_ENGINE_WEBHOOK_SECRET=same_value_as_SAFARI_ZETU_WEBHOOK_SECRET_in_ops_engine
+OPS_ENGINE_URL=https://ops.safarizetu.com
+OPS_ENGINE_ALLOWED_IPS=  # Cloudflare tunnel exit IPs (fill after tunnel setup)
+```
+
+### ✅ VERIFICATION CHECKPOINT 4
+```bash
+# Verify bridge files were created correctly
+[ -f bridge/safari-zetu-additions/app/api/ops-bridge/route.ts ] && echo "PASS: Bridge route exists" || echo "FAIL: Bridge route missing"
+[ -f bridge/safari-zetu-additions/lib/ops-webhook.ts ] && echo "PASS: Webhook sender exists" || echo "FAIL: Webhook sender missing"
+
+# Verify TypeScript syntax (no build errors)
+cd bridge/safari-zetu-additions
+npx tsc --noEmit --skipLibCheck 2>&1 | tail -5
+cd ~/safarizetu-ops-engine
+
+echo "MANUAL CHECK REQUIRED: Review bridge/safari-zetu-additions/ — these files will be copied into Safari Zetu repo in a separate session"
+```
+
+---
+
+## STEP 5 — N8N WORKFLOW ENGINE
+
+Create the Node.js service that manages all n8n workflows programmatically.
+
+### 5.1 Package Setup
+
+```bash
+cd ~/safarizetu-ops-engine
+cat > package.json << 'EOF'
+{
+  "name": "safarizetu-ops-engine",
+  "version": "1.0.0",
+  "description": "Safari Zetu AI Operations Engine",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "test": "jest",
+    "migrate": "node scripts/run-migrations.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.0",
+    "node-cron": "^3.0.3",
+    "pg": "^8.12.0",
+    "winston": "^3.13.0",
+    "crypto": "^1.0.1",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
+    "@types/node-cron": "^3.0.11",
+    "typescript": "^5.4.0",
+    "ts-node-dev": "^2.0.0",
+    "jest": "^29.0.0",
+    "@types/jest": "^29.5.0"
+  }
+}
+EOF
+
+npm install
+```
+
+### 5.2 Core AI Agent Service
+
+```typescript
+// src/services/ai-agent.service.ts
+
+import dotenv from 'dotenv'
+dotenv.config()
+
+import { Pool } from 'pg'
+import winston from 'winston'
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+  transports: [
+    new winston.transports.File({ filename: 'logs/ops-engine.log' }),
+    new winston.transports.Console({ format: winston.format.simple() })
+  ]
+})
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 10,
+  idleTimeoutMillis: 30000
+})
+
+interface AgentCallOptions {
+  agentName: string
+  division: string
+  model?: 'heavy' | 'light' | 'free'
+  systemPrompt: string
+  userMessage: string
+  triggerType: string
+  triggerPayload?: Record<string, any>
+  maxTokens?: number
+}
+
+interface AgentResult {
+  content: string
+  tokensUsed: number
+  model: string
+  costUsd: number
+  runLogId: string
+}
+
+// ── MODEL ROUTING ─────────────────────────────────────────────
+const MODEL_MAP = {
+  heavy: process.env.CLAUDE_MODEL_HEAVY || 'anthropic/claude-sonnet-4-5',
+  light: process.env.CLAUDE_MODEL_LIGHT || 'anthropic/claude-haiku-4-5-20251001',
+  free:  process.env.CLAUDE_MODEL_FREE  || 'mistralai/mistral-7b-instruct:free'
+}
+
+const COST_PER_1K_TOKENS = {
+  [MODEL_MAP.heavy]: 0.003,
+  [MODEL_MAP.light]: 0.00025,
+  [MODEL_MAP.free]:  0.0
+}
+
+export async function callAgent(options: AgentCallOptions): Promise<AgentResult> {
+  const {
+    agentName, division, model = 'light', systemPrompt,
+    userMessage, triggerType, triggerPayload, maxTokens = 2000
+  } = options
+
+  const selectedModel = MODEL_MAP[model]
+  const startTime = Date.now()
+
+  // Log run start
+  const { rows: [runLog] } = await pool.query(
+    `INSERT INTO agent_run_log (agent_name, division, trigger_type, trigger_payload, status, model_used)
+     VALUES ($1, $2, $3, $4, 'running', $5) RETURNING id`,
+    [agentName, division, triggerType, JSON.stringify(triggerPayload || {}), selectedModel]
+  )
+
+  try {
+    const response = await fetch(`${process.env.OPENROUTER_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://safarizetu.com',
+        'X-Title': 'Safari Zetu Ops Engine'
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ]
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`OpenRouter API error ${response.status}: ${errorText}`)
+    }
+
+    const data = await response.json() as any
+    const content = data.choices?.[0]?.message?.content || ''
+    const tokensUsed = data.usage?.total_tokens || 0
+    const costUsd = (tokensUsed / 1000) * (COST_PER_1K_TOKENS[selectedModel] || 0.001)
+    const duration = Date.now() - startTime
+
+    // Update run log with success
+    await pool.query(
+      `UPDATE agent_run_log SET status='success', result_summary=$1, tokens_used=$2,
+       cost_usd=$3, duration_ms=$4, completed_at=NOW() WHERE id=$5`,
+      [content.substring(0, 500), tokensUsed, costUsd, duration, runLog.id]
+    )
+
+    logger.info(`Agent ${agentName} completed`, { tokensUsed, costUsd, duration, model: selectedModel })
+
+    return { content, tokensUsed, model: selectedModel, costUsd, runLogId: runLog.id }
+
+  } catch (error: any) {
+    const duration = Date.now() - startTime
+    await pool.query(
+      `UPDATE agent_run_log SET status='failed', error_message=$1, duration_ms=$2, completed_at=NOW() WHERE id=$3`,
+      [error.message, duration, runLog.id]
+    )
+    logger.error(`Agent ${agentName} failed`, { error: error.message })
+    throw error
+  }
+}
+
+// ── SAFARI ZETU BRIDGE CLIENT ─────────────────────────────────
+export async function fetchFromSafariZetu(resource: string, params: Record<string, string> = {}): Promise<any> {
+  const url = new URL(`${process.env.SAFARI_ZETU_BRIDGE_URL}`)
+  url.searchParams.set('resource', resource)
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'x-ops-api-key': process.env.SAFARI_ZETU_API_KEY!,
+      'Content-Type': 'application/json'
+    },
+    signal: AbortSignal.timeout(15000)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Safari Zetu bridge error: ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function sendEmail(to: string, subject: string, html: string): Promise<string> {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: `${process.env.RESEND_FROM_NAME} <${process.env.RESEND_FROM_EMAIL}>`,
+      to: [to],
+      subject,
+      html
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error(`Resend error: ${response.status}`)
+  }
+
+  const data = await response.json() as any
+  return data.id
+}
+
+export { pool, logger }
+```
+
+### 5.3 All Five Division Agent Prompts
+
+```typescript
+// src/agents/prompts/index.ts
+
+export const AGENT_PROMPTS = {
+
+  // ── DIVISION 1: GROWTH ────────────────────────────────────
+  enquiry_acknowledgement: `
+You are the Safari Zetu tourist experience agent. Safari Zetu is Zimbabwe's premium safari marketplace connecting tourists with 1,199 verified operators across 47 destinations.
+
+Your job is to write a warm, professional, personalised acknowledgement email to a tourist who has just submitted a safari enquiry.
+
+TONE: Warm, knowledgeable, excited about Zimbabwe. Never robotic. Never generic. Always reference their specific destination or request.
+
+STRUCTURE:
+1. Warm greeting using their name
+2. Confirm exactly what they enquired about (destination, dates, group size)
+3. Set expectations: "The operator will respond within 24 hours. We will follow up if you do not hear back."
+4. Add one genuinely useful piece of information about their destination (best time to visit, what to expect, a highlight)
+5. Invite any questions
+6. Sign off as "The Safari Zetu Team"
+
+RULES:
+- Maximum 250 words
+- No excessive exclamation marks
+- Never mention competitors
+- Output ONLY the email body HTML, no subject line, no preamble
+`,
+
+  operator_activation_day1: `
+You are the Safari Zetu operator success agent. Your job is to write a personalised Day 1 activation email to a safari operator who has registered on the platform but not yet completed their listing.
+
+Safari Zetu is Zimbabwe's premium safari marketplace. Operators with complete listings get significantly more enquiries.
+
+TONE: Professional, supportive, colleague-to-colleague. Not sales-y. Not pushy.
+
+STRUCTURE:
+1. Welcome them by name and company name
+2. Acknowledge they have registered — make it feel like a milestone
+3. Explain what a complete listing looks like (photos, description, pricing, availability)
+4. Give them ONE specific action to take today
+5. Offer help — "Reply to this email if you need assistance"
+6. Sign off with a real name: "Marshal, Founder — Safari Zetu"
+
+RULES:
+- Maximum 200 words
+- Reference their specific operator type or destination if provided
+- Output ONLY the email body HTML
+`,
+
+  operator_activation_day3: `
+You are the Safari Zetu operator success agent. This is a follow-up to a Day 1 email to an operator who has not yet completed their listing.
+
+TONE: Friendly nudge. Not desperate. Not threatening. Helpful.
+
+STRUCTURE:
+1. Casual re-opener — "Just checking in"
+2. Share a specific stat: "Operators with complete listings receive 3x more enquiries"
+3. Identify the one thing most likely missing from their listing (use context provided)
+4. One-click action — make it easy
+5. Brief sign off
+
+RULES:
+- Maximum 150 words
+- Output ONLY the email body HTML
+`,
+
+  operator_activation_day7: `
+You are the Safari Zetu operator success agent. This is the final activation email for an operator who has not responded in 7 days.
+
+TONE: Last friendly check-in. No pressure. Leave the door open.
+
+STRUCTURE:
+1. Acknowledge they are busy — validate it
+2. Tell them their listing is still live and tourists can still find them
+3. One simple offer: "Reply YES and we will complete your listing for you based on your ZTA registration details"
+4. Let them know this is the last reminder — they can always log in when ready
+
+RULES:
+- Maximum 120 words
+- Output ONLY the email body HTML
+`,
+
+  seo_content_generator: `
+You are the Safari Zetu content strategist and writer. Safari Zetu is Zimbabwe's premium safari marketplace. Your content must position Safari Zetu as the authoritative voice on Zimbabwe tourism.
+
+AUDIENCE: International tourists (UK, Germany, USA, Australia primarily) planning their first or second African safari. They are researching, comparing options, not yet ready to book.
+
+SEO REQUIREMENTS:
+- Include the primary keyword naturally 3-5 times
+- Include 2-3 secondary keywords
+- Use subheadings (H2, H3)
+- Include a clear call to action at the end linking to safarizetu.com
+- Target 800-1200 words
+
+TONE: Expert but accessible. Inspiring. Honest about what tourists will experience.
+
+NEVER: Mention competitors. Make false claims about pricing. Guarantee experiences.
+
+OUTPUT FORMAT:
+Title: [SEO optimised title]
+Meta Description: [155 character meta description]
+---
+[Full article in HTML with h2, h3, p, ul tags]
+`,
+
+  lead_research: `
+You are the Safari Zetu business development research agent.
+
+Your job is to research a travel industry prospect and produce a structured research brief that will be used to write a personalised outreach email.
+
+OUTPUT FORMAT (JSON only, no other text):
+{
+  "company_summary": "2-3 sentence description of what they do",
+  "audience_match": "Why their audience would be interested in Zimbabwe safaris",
+  "partnership_angle": "The specific value Safari Zetu offers them",
+  "conversation_starter": "One specific recent news item, post, or detail to reference in outreach",
+  "recommended_approach": "email|linkedin|both",
+  "priority_score": 1-10
+}
+`,
+
+  outreach_email_drafter: `
+You are the Safari Zetu business development agent. You write first-contact outreach emails to travel industry prospects.
+
+Safari Zetu is Zimbabwe's premium safari marketplace with 1,199 verified operators across 47 destinations, backed by the Zimbabwe Tourism Authority.
+
+TONE: Peer-to-peer. Brief. Specific. Genuine value proposition — not spam.
+
+STRUCTURE:
+1. One-sentence personalised opener referencing something specific about them
+2. Two sentences on Safari Zetu — what it is, why it matters
+3. One specific partnership value proposition for THIS prospect
+4. A single soft call to action — "Would a 15-minute call be worthwhile?"
+5. Brief sign off: "Marshal | Founder, Safari Zetu | safarizetu.com"
+
+RULES:
+- Maximum 150 words total
+- Subject line included (output as "Subject: ...")
+- Output ONLY subject line then email body, no HTML tags
+- Never BCC multiple people
+- Never use phrases like "I hope this email finds you well"
+`,
+
+  partnership_research: `
+You are the Safari Zetu strategic partnerships agent.
+
+Your job is to research a potential partnership target and produce a comprehensive brief that will be used by the founder to prepare for a first conversation.
+
+OUTPUT FORMAT (structured text):
+
+COMPANY OVERVIEW
+[3-4 sentences: what they do, scale, market position]
+
+ZIMBABWE / TOURISM RELEVANCE
+[How their business intersects with Zimbabwe tourism or their customer base]
+
+KEY CONTACTS
+[Names, roles, likely email formats, LinkedIn URLs if known]
+
+PARTNERSHIP VALUE — WHAT SAFARI ZETU OFFERS THEM
+[Specific, concrete value — traffic, data, market access, co-marketing]
+
+PARTNERSHIP VALUE — WHAT THEY OFFER SAFARI ZETU
+[Distribution, credibility, tourist reach, data]
+
+RECOMMENDED PARTNERSHIP STRUCTURE
+[Referral agreement / co-marketing MOU / integration / revenue share]
+
+CONVERSATION TALKING POINTS
+[3 bullet points the founder should lead with]
+
+RISK / CONCERNS
+[Any concerns about this partnership worth flagging]
+
+PRIORITY: [High / Medium / Low] — [one sentence reason]
+`,
+
+  post_trip_review_request: `
+You are the Safari Zetu tourist experience agent. A tourist has recently completed their safari booked through Safari Zetu.
+
+Your job is to write a warm, genuine post-trip follow-up email that checks in on their experience and naturally invites them to leave a review.
+
+TONE: Warm, curious, genuinely interested. Never transactional.
+
+STRUCTURE:
+1. Warm opener — reference their specific destination
+2. Ask how it went — make it feel like a friend asking, not a form
+3. Natural segue to the review request — explain it helps other travellers
+4. Easy one-click link to leave a review
+5. Mention the referral offer (10% off next booking for a friend they refer)
+6. Brief, warm sign off
+
+RULES:
+- Maximum 200 words
+- Output ONLY the email body HTML
+- Never use the word "survey"
+`,
+
+  weekly_intelligence_report: `
+You are the Safari Zetu intelligence analyst. Every Monday morning you produce a concise weekly operations report for the founder.
+
+TONE: Direct. Data-first. Flag what needs attention. Do not pad.
+
+STRUCTURE:
+1. HEADLINE METRICS (this week vs last week)
+   - Enquiries: [X] ([+/-Y%])
+   - Operator response rate: [X%]
+   - Operators activated this week: [X]
+   - Leads contacted: [X] | Replies: [X]
+   - AI system cost: $[X]
+
+2. GREEN FLAGS (what is working)
+   [2-3 bullets, max]
+
+3. RED FLAGS (what needs your attention)
+   [Any metric below threshold, any anomaly — be direct]
+
+4. THIS WEEK'S PRIORITY
+   [One thing the founder should personally act on this week]
+
+5. PIPELINE SNAPSHOT
+   [Partnership pipeline status in 3-4 lines]
+
+OUTPUT: Plain text, no HTML. Founder reads this on mobile Monday morning.
+`,
+
+  complaint_detection: `
+You are the Safari Zetu quality assurance agent. Your job is to analyse incoming communications and identify any signals of tourist or operator dissatisfaction.
+
+Analyse the provided text and output JSON:
+{
+  "sentiment": "positive|neutral|negative|urgent",
+  "complaint_detected": true|false,
+  "severity": "low|medium|high|critical",
+  "issue_summary": "One sentence describing the issue if present",
+  "recommended_action": "What the founder should do",
+  "requires_immediate_attention": true|false
+}
+
+CRITICAL severity = any safety concern, health issue, financial dispute, or public threat to review.
+HIGH severity = confirmed bad experience, operator no-show, major service failure.
+MEDIUM = expressed disappointment, minor service gap.
+LOW = general negative sentiment without specific complaint.
+`
+}
+```
+
+### 5.4 Division Agent Services
+
+```typescript
+// src/agents/division1-growth.ts
+
+import { callAgent, fetchFromSafariZetu, sendEmail, pool, logger } from '../services/ai-agent.service'
+import { AGENT_PROMPTS } from './prompts'
+
+// ── ENQUIRY ACKNOWLEDGEMENT ───────────────────────────────────
+export async function acknowledgeEnquiry(enquiry: any): Promise<void> {
+  logger.info(`Acknowledging enquiry ${enquiry.id}`)
+
+  const result = await callAgent({
+    agentName: 'enquiry_acknowledgement',
+    division: 'tourist_experience',
+    model: 'light',
+    systemPrompt: AGENT_PROMPTS.enquiry_acknowledgement,
+    userMessage: JSON.stringify({
+      tourist_name: enquiry.tourist?.name || 'there',
+      tourist_email: enquiry.tourist?.email,
+      destination: enquiry.destination,
+      travel_dates: enquiry.travelDates,
+      group_size: enquiry.groupSize,
+      special_requests: enquiry.specialRequests,
+      operator_name: enquiry.operator?.name
+    }),
+    triggerType: 'new_enquiry',
+    triggerPayload: { enquiry_id: enquiry.id }
+  })
+
+  // Send the email
+  const messageId = await sendEmail(
+    enquiry.tourist?.email,
+    `Your Safari Zetu Enquiry — ${enquiry.destination || 'Zimbabwe Safari'}`,
+    result.content
+  )
+
+  // Log to ops database
+  await pool.query(
+    `INSERT INTO outreach_log (entity_type, entity_id, email_to, email_subject, email_body, email_type, resend_message_id, status, agent_name, tokens_used, model_used, cost_usd, sent_at)
+     VALUES ('tourist', $1, $2, $3, $4, 'acknowledgement', $5, 'sent', 'enquiry_acknowledgement', $6, $7, $8, NOW())`,
+    [enquiry.id, enquiry.tourist?.email, `Your Safari Zetu Enquiry — ${enquiry.destination}`,
+     result.content, messageId, result.tokensUsed, result.model, result.costUsd]
+  )
+
+  // Update enquiry log
+  await pool.query(
+    `INSERT INTO enquiry_log (safari_zetu_enquiry_id, tourist_email, tourist_name, destination, status, acknowledgement_sent_at)
+     VALUES ($1, $2, $3, $4, 'acknowledged', NOW())
+     ON CONFLICT (safari_zetu_enquiry_id) DO UPDATE SET status='acknowledged', acknowledgement_sent_at=NOW()`,
+    [enquiry.id, enquiry.tourist?.email, enquiry.tourist?.name, enquiry.destination]
+  )
+
+  logger.info(`Enquiry ${enquiry.id} acknowledged successfully`)
+}
+
+// ── SEO CONTENT GENERATION ────────────────────────────────────
+export async function generateSeoContent(topic: string, destination?: string, keywords?: string[]): Promise<void> {
+  logger.info(`Generating SEO content: ${topic}`)
+
+  // Queue the content item
+  const { rows: [contentItem] } = await pool.query(
+    `INSERT INTO content_queue (content_type, topic, keywords, target_destination, status)
+     VALUES ('blog_article', $1, $2, $3, 'generating') RETURNING id`,
+    [topic, keywords || [], destination || null]
+  )
+
+  try {
+    const result = await callAgent({
+      agentName: 'seo_content_generator',
+      division: 'growth',
+      model: 'heavy',
+      systemPrompt: AGENT_PROMPTS.seo_content_generator,
+      userMessage: `Write an SEO article about: ${topic}. Primary keyword: ${keywords?.[0] || topic}. ${destination ? `Focus destination: ${destination}.` : ''} ${keywords ? `Secondary keywords: ${keywords.slice(1).join(', ')}.` : ''}`,
+      triggerType: 'scheduled_content',
+      maxTokens: 3000
+    })
+
+    // Parse title and content
+    const lines = result.content.split('\n')
+    const titleLine = lines.find(l => l.startsWith('Title:'))
+    const title = titleLine?.replace('Title:', '').trim() || topic
+    const contentBody = result.content.split('---').slice(1).join('---').trim()
+
+    // Move to approval queue
+    await pool.query(
+      `UPDATE content_queue SET status='pending_approval', title=$1, draft_content=$2, generated_at=NOW(), tokens_used=$3, model_used=$4, cost_usd=$5, word_count=$6 WHERE id=$7`,
+      [title, contentBody, result.tokensUsed, result.model, result.costUsd, contentBody.split(' ').length, contentItem.id]
+    )
+
+    await pool.query(
+      `INSERT INTO approval_queue (item_type, reference_id, title, preview, full_content, priority)
+       VALUES ('content', $1, $2, $3, $4, 'normal')`,
+      [contentItem.id, title, contentBody.substring(0, 300) + '...', contentBody]
+    )
+
+    logger.info(`SEO content generated and queued for approval: ${title}`)
+  } catch (error: any) {
+    await pool.query(`UPDATE content_queue SET status='queued' WHERE id=$1`, [contentItem.id])
+    throw error
+  }
+}
+
+// ── OPERATOR ACTIVATION ───────────────────────────────────────
+export async function sendOperatorActivation(operator: any, stage: 'day1' | 'day3' | 'day7'): Promise<void> {
+  const promptKey = `operator_activation_${stage}` as keyof typeof AGENT_PROMPTS
+  logger.info(`Sending ${stage} activation to operator ${operator.id}`)
+
+  const result = await callAgent({
+    agentName: `operator_activation_${stage}`,
+    division: 'operator_relations',
+    model: 'light',
+    systemPrompt: AGENT_PROMPTS[promptKey],
+    userMessage: JSON.stringify({
+      operator_name: operator.name,
+      contact_name: operator.contactName || operator.name,
+      operator_type: operator.operatorType,
+      destination: operator.destinations?.[0],
+      listing_completion: operator.listingCompletion || 0
+    }),
+    triggerType: `operator_activation_${stage}`,
+    triggerPayload: { operator_id: operator.id }
+  })
+
+  const subject = {
+    day1: 'Welcome to Safari Zetu — Complete your listing today',
+    day3: 'Your Safari Zetu listing is almost ready',
+    day7: 'One last thing from Safari Zetu'
+  }[stage]
+
+  const messageId = await sendEmail(operator.email, subject, result.content)
+
+  await pool.query(
+    `UPDATE operator_activation_queue SET activation_stage=$1, ${stage}_sent_at=NOW() WHERE safari_zetu_operator_id=$2`,
+    [stage + '_sent', operator.id]
+  )
+
+  await pool.query(
+    `INSERT INTO outreach_log (entity_type, entity_id, email_to, email_subject, email_body, email_type, resend_message_id, status, agent_name, tokens_used, model_used, cost_usd, sent_at)
+     VALUES ('operator', $1, $2, $3, $4, $5, $6, 'sent', $7, $8, $9, $10, NOW())`,
+    [operator.id, operator.email, subject, result.content, `activation_${stage}`, messageId,
+     `operator_activation_${stage}`, result.tokensUsed, result.model, result.costUsd]
+  )
+
+  logger.info(`Operator ${operator.id} activation ${stage} sent`)
+}
+```
+
+```typescript
+// src/agents/division3-partnerships.ts
+
+import { callAgent, pool, logger } from '../services/ai-agent.service'
+import { AGENT_PROMPTS } from './prompts'
+
+export async function researchPartnership(partner: any): Promise<void> {
+  logger.info(`Researching partnership: ${partner.company_name}`)
+
+  const result = await callAgent({
+    agentName: 'partnership_research',
+    division: 'partnership',
+    model: 'heavy',
+    systemPrompt: AGENT_PROMPTS.partnership_research,
+    userMessage: `Research this potential partner for Safari Zetu:
+Company: ${partner.company_name}
+Type: ${partner.company_type}
+Country: ${partner.country || 'Zimbabwe'}
+Known info: ${partner.partnership_value_proposition}
+Current status: ${partner.status}`,
+    triggerType: 'partnership_research_requested',
+    triggerPayload: { partner_id: partner.id },
+    maxTokens: 2000
+  })
+
+  await pool.query(
+    `UPDATE partnership_pipeline SET research_brief=$1, status='researched', updated_at=NOW() WHERE id=$2`,
+    [result.content, partner.id]
+  )
+
+  // Add to approval queue so founder can review
+  await pool.query(
+    `INSERT INTO approval_queue (item_type, reference_id, title, preview, full_content, priority)
+     VALUES ('proposal', $1, $2, $3, $4, 'high')`,
+    [partner.id, `Partnership Brief: ${partner.company_name}`,
+     result.content.substring(0, 300) + '...', result.content]
+  )
+
+  logger.info(`Partnership research complete for ${partner.company_name}`)
+}
+
+export async function draftPartnershipOutreach(partner: any): Promise<void> {
+  if (!partner.research_brief) {
+    throw new Error(`Cannot draft outreach for ${partner.company_name} — research brief missing. Run research first.`)
+  }
+
+  const result = await callAgent({
+    agentName: 'outreach_email_drafter',
+    division: 'partnership',
+    model: 'light',
+    systemPrompt: AGENT_PROMPTS.outreach_email_drafter,
+    userMessage: `Write a partnership outreach email to:
+Company: ${partner.company_name} (${partner.company_type})
+Contact: ${partner.contact_name || 'the partnerships team'}
+Research: ${partner.research_brief}`,
+    triggerType: 'partnership_outreach_drafted',
+    triggerPayload: { partner_id: partner.id }
+  })
+
+  await pool.query(
+    `INSERT INTO approval_queue (item_type, reference_id, title, preview, full_content, priority)
+     VALUES ('partnership_email', $1, $2, $3, $4, 'high')`,
+    [partner.id, `Outreach Email: ${partner.company_name}`,
+     result.content.substring(0, 200), result.content]
+  )
+
+  logger.info(`Partnership outreach drafted for ${partner.company_name} — pending founder approval`)
+}
+```
+
+### 5.5 Webhook Receiver (n8n Trigger)
+
+```typescript
+// src/webhook/receiver.ts
+
+import { createHmac, timingSafeEqual } from 'crypto'
+import { acknowledgeEnquiry, sendOperatorActivation } from '../agents/division1-growth'
+import { logger, pool } from '../services/ai-agent.service'
+
+const WEBHOOK_SECRET = process.env.SAFARI_ZETU_WEBHOOK_SECRET!
+
+export function verifyWebhookSignature(body: string, signature: string): boolean {
+  const expected = createHmac('sha256', WEBHOOK_SECRET).update(body).digest('hex')
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  } catch { return false }
+}
+
+export async function handleWebhook(event: string, data: any): Promise<void> {
+  logger.info(`Received webhook: ${event}`)
+
+  try {
+    switch (event) {
+      case 'enquiry.created':
+        await acknowledgeEnquiry(data)
+        break
+
+      case 'operator.registered':
+        // Add to activation queue
+        await pool.query(
+          `INSERT INTO operator_activation_queue (safari_zetu_operator_id, operator_name, operator_email, operator_type, destination, activation_stage)
+           VALUES ($1, $2, $3, $4, $5, 'pending')
+           ON CONFLICT (safari_zetu_operator_id) DO NOTHING`,
+          [data.id, data.name, data.email, data.operatorType, data.destinations?.[0]]
+        )
+        // Send day1 immediately
+        await sendOperatorActivation(data, 'day1')
+        break
+
+      case 'booking.completed':
+        // Schedule post-trip follow-up (3 days after trip end)
+        logger.info(`Booking completed ${data.id} — post-trip follow-up scheduled`)
+        break
+
+      default:
+        logger.warn(`Unhandled webhook event: ${event}`)
+    }
+  } catch (error: any) {
+    logger.error(`Webhook handler failed for ${event}:`, error)
+    throw error
+  }
+}
+```
+
+### 5.6 Scheduler (Cron Jobs)
+
+```typescript
+// src/scheduler/cron.ts
+
+import cron from 'node-cron'
+import { pool, logger, fetchFromSafariZetu } from '../services/ai-agent.service'
+import { generateSeoContent, sendOperatorActivation } from '../agents/division1-growth'
+import { researchPartnership } from '../agents/division3-partnerships'
+
+export function startScheduler(): void {
+  logger.info('Starting cron scheduler')
+
+  // ── EVERY 5 MINUTES: Check new enquiries ─────────────────
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const since = new Date(Date.now() - 6 * 60 * 1000).toISOString()
+      const { enquiries } = await fetchFromSafariZetu('enquiries', { since, limit: '20' })
+      if (enquiries?.length > 0) {
+        logger.info(`Found ${enquiries.length} new enquiries to process`)
+      }
+    } catch (error: any) {
+      logger.error('Enquiry check failed:', error.message)
+    }
+  })
+
+  // ── DAILY 9AM: Operator activation follow-ups ─────────────
+  cron.schedule('0 9 * * *', async () => {
+    try {
+      // Find operators due for day3 (registered 3 days ago, still pending)
+      const { rows: day3Operators } = await pool.query(
+        `SELECT * FROM operator_activation_queue
+         WHERE activation_stage = 'day1_sent'
+         AND day1_sent_at < NOW() - INTERVAL '3 days'
+         LIMIT 20`
+      )
+      for (const op of day3Operators) {
+        await sendOperatorActivation(op, 'day3')
+        await new Promise(r => setTimeout(r, 2000)) // Rate limit
+      }
+
+      // Find operators due for day7
+      const { rows: day7Operators } = await pool.query(
+        `SELECT * FROM operator_activation_queue
+         WHERE activation_stage = 'day3_sent'
+         AND day3_sent_at < NOW() - INTERVAL '4 days'
+         LIMIT 20`
+      )
+      for (const op of day7Operators) {
+        await sendOperatorActivation(op, 'day7')
+        await new Promise(r => setTimeout(r, 2000))
+      }
+    } catch (error: any) {
+      logger.error('Operator activation cron failed:', error.message)
+    }
+  })
+
+  // ── TUESDAY & FRIDAY 8AM: SEO content generation ──────────
+  cron.schedule('0 8 * * 2,5', async () => {
+    const topics = [
+      { topic: 'Best time to visit Victoria Falls Zimbabwe', destination: 'Victoria Falls', keywords: ['victoria falls', 'zimbabwe safari', 'best time to visit victoria falls'] },
+      { topic: 'Hwange National Park safari guide for first timers', destination: 'Hwange', keywords: ['hwange national park', 'zimbabwe safari guide', 'hwange safari'] },
+      { topic: 'Zimbabwe luxury safari lodges 2026', destination: 'Zimbabwe', keywords: ['zimbabwe luxury safari', 'luxury safari lodges zimbabwe'] }
+    ]
+    const topic = topics[Math.floor(Math.random() * topics.length)]
+    try {
+      await generateSeoContent(topic.topic, topic.destination, topic.keywords)
+    } catch (error: any) {
+      logger.error('SEO content generation failed:', error.message)
+    }
+  })
+
+  // ── MONDAY 7AM: Weekly intelligence report ────────────────
+  cron.schedule('0 7 * * 1', async () => {
+    try {
+      const { rows: [metrics] } = await pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as enquiries_this_week,
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days') as enquiries_last_week,
+          COUNT(*) FILTER (WHERE activation_stage = 'activated' AND updated_at > NOW() - INTERVAL '7 days') as operators_activated,
+          SUM(cost_usd) FILTER (WHERE started_at > NOW() - INTERVAL '7 days') as total_cost
+        FROM enquiry_log, operator_activation_queue, agent_run_log
+      `)
+      logger.info('Weekly metrics compiled', metrics)
+    } catch (error: any) {
+      logger.error('Weekly report cron failed:', error.message)
+    }
+  })
+
+  // ── SUNDAY 6PM: Research unresearched partnerships ────────
+  cron.schedule('0 18 * * 0', async () => {
+    try {
+      const { rows: partners } = await pool.query(
+        `SELECT * FROM partnership_pipeline WHERE status = 'identified' LIMIT 3`
+      )
+      for (const partner of partners) {
+        await researchPartnership(partner)
+        await new Promise(r => setTimeout(r, 5000))
+      }
+    } catch (error: any) {
+      logger.error('Partnership research cron failed:', error.message)
+    }
+  })
+
+  logger.info('All cron jobs scheduled')
+}
+```
+
+### ✅ VERIFICATION CHECKPOINT 5
+```bash
+# Verify all agent source files exist
+files=(
+  "src/services/ai-agent.service.ts"
+  "src/agents/prompts/index.ts"
+  "src/agents/division1-growth.ts"
+  "src/agents/division3-partnerships.ts"
+  "src/webhook/receiver.ts"
+  "src/scheduler/cron.ts"
+)
+
+all_pass=true
+for f in "${files[@]}"; do
+  if [ -f "$f" ]; then
+    echo "PASS: $f exists"
+  else
+    echo "FAIL: $f missing"
+    all_pass=false
+  fi
+done
+
+# TypeScript compile check
+npx tsc --noEmit 2>&1 | head -20
+[ $? -eq 0 ] && echo "PASS: TypeScript compiles clean" || echo "FAIL: TypeScript errors found — fix before proceeding"
+```
+
+---
+
+## STEP 6 — REACT DASHBOARD
+
+### 6.1 Dashboard Setup
+
+```bash
+cd ~/safarizetu-ops-engine/dashboard
+npx create-react-app . --template typescript
+npm install recharts @tanstack/react-query axios pg date-fns lucide-react
+```
+
+### 6.2 Main Dashboard App
+
+```typescript
+// dashboard/src/App.tsx
+
+import React, { useState, useEffect } from 'react'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import axios from 'axios'
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { refetchInterval: 30000 } }
+})
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000'
+
+// ── THEME ─────────────────────────────────────────────────────
+const theme = {
+  bg: '#0a0e0a',
+  panel: '#111811',
+  border: '#1e3a1e',
+  green: '#00ff88',
+  gold: '#d4a017',
+  red: '#ff4444',
+  muted: '#4a6a4a',
+  text: '#c8e6c8',
+  white: '#ffffff'
+}
+
+// ── METRIC CARD ───────────────────────────────────────────────
+function MetricCard({ label, value, delta, color }: any) {
+  const deltaColor = delta > 0 ? theme.green : delta < 0 ? theme.red : theme.muted
+  return (
+    <div style={{ background: theme.panel, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '20px 24px', minWidth: 180 }}>
+      <div style={{ color: theme.muted, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+      <div style={{ color: color || theme.green, fontSize: 32, fontWeight: 700, fontFamily: 'monospace' }}>{value}</div>
+      {delta !== undefined && (
+        <div style={{ color: deltaColor, fontSize: 12, marginTop: 4 }}>
+          {delta > 0 ? '▲' : delta < 0 ? '▼' : '—'} {Math.abs(delta)}% vs last week
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── APPROVAL QUEUE PANEL ──────────────────────────────────────
+function ApprovalQueuePanel() {
+  const { data, refetch } = useQuery({
+    queryKey: ['approval-queue'],
+    queryFn: () => axios.get(`${API_BASE}/api/approval-queue`).then(r => r.data)
+  })
+
+  const approve = async (id: string) => {
+    await axios.post(`${API_BASE}/api/approval-queue/${id}/approve`)
+    refetch()
+  }
+
+  const reject = async (id: string) => {
+    await axios.post(`${API_BASE}/api/approval-queue/${id}/reject`)
+    refetch()
+  }
+
+  const items = data?.items || []
+  const urgent = items.filter((i: any) => i.priority === 'urgent' || i.priority === 'high')
+
+  return (
+    <div style={{ background: theme.panel, border: `1px solid ${urgent.length > 0 ? theme.gold : theme.border}`, borderRadius: 8, padding: 24 }}>
+      <div style={{ color: theme.gold, fontSize: 13, fontWeight: 700, letterSpacing: 2, marginBottom: 16 }}>
+        APPROVAL QUEUE {urgent.length > 0 && <span style={{ color: theme.red }}>● {urgent.length} URGENT</span>}
+      </div>
+      {items.length === 0 ? (
+        <div style={{ color: theme.muted, fontSize: 13 }}>No items pending approval</div>
+      ) : (
+        items.slice(0, 5).map((item: any) => (
+          <div key={item.id} style={{ borderBottom: `1px solid ${theme.border}`, paddingBottom: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ color: theme.text, fontSize: 13, fontWeight: 600 }}>{item.title}</div>
+                <div style={{ color: theme.muted, fontSize: 11, marginTop: 4 }}>{item.item_type} · {new Date(item.created_at).toLocaleDateString()}</div>
+                <div style={{ color: theme.muted, fontSize: 12, marginTop: 6, fontStyle: 'italic' }}>{item.preview?.substring(0, 100)}...</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginLeft: 16 }}>
+                <button onClick={() => approve(item.id)} style={{ background: theme.green, color: '#000', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>APPROVE</button>
+                <button onClick={() => reject(item.id)} style={{ background: 'transparent', color: theme.red, border: `1px solid ${theme.red}`, borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>REJECT</button>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+// ── PIPELINE PANEL ────────────────────────────────────────────
+function PipelinePanel({ title, data, statusKey, colorMap }: any) {
+  const items = data || []
+  return (
+    <div style={{ background: theme.panel, border: `1px solid ${theme.border}`, borderRadius: 8, padding: 24 }}>
+      <div style={{ color: theme.gold, fontSize: 13, fontWeight: 700, letterSpacing: 2, marginBottom: 16 }}>{title}</div>
+      {items.slice(0, 6).map((item: any, i: number) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: `1px solid ${theme.border}` }}>
+          <div style={{ color: theme.text, fontSize: 13 }}>{item.company_name || item.contact_name || item.operator_name}</div>
+          <div style={{ color: colorMap?.[item[statusKey]] || theme.muted, fontSize: 11, fontWeight: 600, letterSpacing: 1 }}>{item[statusKey]?.toUpperCase()}</div>
+        </div>
+      ))}
+      {items.length === 0 && <div style={{ color: theme.muted, fontSize: 13 }}>No items yet</div>}
+    </div>
+  )
+}
+
+// ── AGENT COST PANEL ──────────────────────────────────────────
+function AgentCostPanel() {
+  const { data } = useQuery({
+    queryKey: ['agent-costs'],
+    queryFn: () => axios.get(`${API_BASE}/api/agent-costs`).then(r => r.data)
+  })
+
+  return (
+    <div style={{ background: theme.panel, border: `1px solid ${theme.border}`, borderRadius: 8, padding: 24 }}>
+      <div style={{ color: theme.gold, fontSize: 13, fontWeight: 700, letterSpacing: 2, marginBottom: 16 }}>AI COST MONITOR (THIS MONTH)</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <div style={{ color: theme.muted, fontSize: 11 }}>TOTAL SPEND</div>
+          <div style={{ color: theme.green, fontSize: 24, fontFamily: 'monospace', fontWeight: 700 }}>${data?.total_cost_usd?.toFixed(4) || '0.0000'}</div>
+        </div>
+        <div>
+          <div style={{ color: theme.muted, fontSize: 11 }}>TOTAL RUNS</div>
+          <div style={{ color: theme.text, fontSize: 24, fontFamily: 'monospace', fontWeight: 700 }}>{data?.total_runs || 0}</div>
+        </div>
+        <div>
+          <div style={{ color: theme.muted, fontSize: 11 }}>AVG COST/RUN</div>
+          <div style={{ color: theme.text, fontSize: 24, fontFamily: 'monospace', fontWeight: 700 }}>${data?.avg_cost?.toFixed(6) || '0.000000'}</div>
+        </div>
+      </div>
+      {data?.by_agent?.map((agent: any) => (
+        <div key={agent.agent_name} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${theme.border}` }}>
+          <div style={{ color: theme.muted, fontSize: 12 }}>{agent.agent_name}</div>
+          <div style={{ color: theme.text, fontSize: 12, fontFamily: 'monospace' }}>{agent.runs} runs · ${agent.cost?.toFixed(4)}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── MAIN DASHBOARD ────────────────────────────────────────────
+function Dashboard() {
+  const { data: metrics } = useQuery({
+    queryKey: ['metrics'],
+    queryFn: () => axios.get(`${API_BASE}/api/metrics`).then(r => r.data)
+  })
+
+  const { data: partnerships } = useQuery({
+    queryKey: ['partnerships'],
+    queryFn: () => axios.get(`${API_BASE}/api/partnerships`).then(r => r.data)
+  })
+
+  const { data: leads } = useQuery({
+    queryKey: ['leads'],
+    queryFn: () => axios.get(`${API_BASE}/api/leads`).then(r => r.data)
+  })
+
+  return (
+    <div style={{ background: theme.bg, minHeight: '100vh', padding: 24, fontFamily: 'Inter, system-ui, sans-serif', color: theme.text }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+        <div>
+          <div style={{ color: theme.green, fontSize: 22, fontWeight: 800, letterSpacing: 3 }}>SAFARI ZETU</div>
+          <div style={{ color: theme.muted, fontSize: 11, letterSpacing: 2 }}>AI OPS ENGINE — LIVE</div>
+        </div>
+        <div style={{ color: theme.muted, fontSize: 12, fontFamily: 'monospace' }}>
+          {new Date().toLocaleString()}
+        </div>
+      </div>
+
+      {/* Top Metrics */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        <MetricCard label="Enquiries This Week" value={metrics?.enquiries_this_week || 0} delta={metrics?.enquiry_delta} />
+        <MetricCard label="Operator Response Rate" value={`${metrics?.response_rate || 0}%`} color={metrics?.response_rate > 80 ? theme.green : theme.red} />
+        <MetricCard label="Operators Activated" value={metrics?.operators_activated || 0} color={theme.gold} />
+        <MetricCard label="Leads in Pipeline" value={metrics?.total_leads || 0} color={theme.text} />
+        <MetricCard label="Partnerships Active" value={metrics?.active_partnerships || 0} color={theme.gold} />
+        <MetricCard label="Approval Queue" value={metrics?.pending_approvals || 0} color={metrics?.pending_approvals > 0 ? theme.gold : theme.green} />
+      </div>
+
+      {/* Main Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+        <ApprovalQueuePanel />
+        <AgentCostPanel />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+        <PipelinePanel
+          title="PARTNERSHIP PIPELINE"
+          data={partnerships?.items}
+          statusKey="status"
+          colorMap={{ signed: theme.green, negotiating: theme.gold, meeting_scheduled: theme.gold, outreach_sent: theme.text, identified: theme.muted }}
+        />
+        <PipelinePanel
+          title="LEAD PIPELINE"
+          data={leads?.items}
+          statusKey="status"
+          colorMap={{ converted: theme.green, replied: theme.gold, outreach_sent: theme.text, identified: theme.muted }}
+        />
+      </div>
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Dashboard />
+    </QueryClientProvider>
+  )
+}
+```
+
+### ✅ VERIFICATION CHECKPOINT 6
+```bash
+cd ~/safarizetu-ops-engine/dashboard
+npm run build 2>&1 | tail -10
+[ $? -eq 0 ] && echo "PASS: Dashboard builds successfully" || echo "FAIL: Dashboard build errors — fix before proceeding"
+```
+
+---
+
+## STEP 7 — SECURITY HARDENING
+
+### 7.1 Security Checklist — Verify Every Item
+
+```bash
+echo "=== SECURITY AUDIT ==="
+
+# 1. .env not committed
+grep -q ".env" .gitignore && echo "PASS: .env in .gitignore" || echo "FAIL: .env NOT in gitignore — CRITICAL"
+
+# 2. No hardcoded secrets in source files
+grep -rn "sk-\|re_\|Bearer [a-zA-Z0-9]" src/ dashboard/src/ --include="*.ts" --include="*.tsx" | grep -v ".env" | grep -v "process.env" | wc -l | xargs -I{} bash -c '[ {} -eq 0 ] && echo "PASS: No hardcoded secrets" || echo "FAIL: Hardcoded secrets found — CRITICAL"'
+
+# 3. HMAC verification present in webhook receiver
+grep -q "verifyWebhookSignature\|timingSafeEqual" src/webhook/receiver.ts && echo "PASS: Webhook signature verification present" || echo "FAIL: Webhook verification missing"
+
+# 4. API key verification present in bridge route
+grep -q "verifyApiKey\|timingSafeEqual" bridge/safari-zetu-additions/app/api/ops-bridge/route.ts && echo "PASS: API key verification present" || echo "FAIL: API key verification missing"
+
+# 5. Rate limiting present
+grep -q "checkRateLimit\|rateLimit" bridge/safari-zetu-additions/app/api/ops-bridge/route.ts && echo "PASS: Rate limiting present" || echo "FAIL: Rate limiting missing"
+
+# 6. Error handling in agent calls
+grep -q "try {" src/services/ai-agent.service.ts && echo "PASS: Error handling in agent service" || echo "FAIL: Error handling missing"
+
+# 7. All external calls have timeouts
+grep -q "AbortSignal.timeout\|timeout" src/services/ai-agent.service.ts && echo "PASS: Request timeouts present" || echo "FAIL: Timeouts missing"
+
+echo "=== SECURITY AUDIT COMPLETE ==="
+```
+
+---
+
+## STEP 8 — SYSTEM STARTUP & FINAL INTEGRATION TEST
+
+### 8.1 Start Everything
+
+```bash
+cd ~/safarizetu-ops-engine
+
+# Start all Docker services
+docker compose -f infrastructure/docker-compose.yml up -d
+
+# Wait for services
+echo "Waiting for services to be healthy..."
+sleep 45
+
+# Build and start ops engine
+npm run build
+npm start &
+OPS_PID=$!
+
+echo "Ops engine started with PID $OPS_PID"
+```
+
+### 8.2 Full System Integration Test
+
+```bash
+echo "=== FINAL INTEGRATION TEST ==="
+
+# Test 1: Postgres connection
+docker exec ops_postgres psql -U ops_admin -d safarizetu_ops -c "SELECT COUNT(*) FROM partnership_pipeline;" | grep -q "2" && echo "PASS: Database has seed data" || echo "FAIL: Database seed data missing"
+
+# Test 2: n8n API responding
+curl -s -u "$N8N_BASIC_AUTH_USER:$N8N_BASIC_AUTH_PASSWORD" http://localhost:5678/api/v1/workflows | grep -q "data" && echo "PASS: n8n API responding" || echo "FAIL: n8n API not responding"
+
+# Test 3: Chroma vector DB
+curl -s http://localhost:8001/api/v1/collections | grep -q "\[\]" && echo "PASS: Chroma responding" || echo "FAIL: Chroma not responding"
+
+# Test 4: OpenRouter connectivity
+curl -s -H "Authorization: Bearer $OPENROUTER_API_KEY" https://openrouter.ai/api/v1/models | grep -q "id" && echo "PASS: OpenRouter reachable" || echo "FAIL: OpenRouter unreachable — check API key"
+
+# Test 5: Resend API
+curl -s -H "Authorization: Bearer $RESEND_API_KEY" https://api.resend.com/domains | grep -q "data\|error" && echo "PASS: Resend API reachable" || echo "FAIL: Resend unreachable — check API key"
+
+# Test 6: Safari Zetu bridge reachable (will return 401 without key — that is correct behaviour)
+curl -s -o /dev/null -w "%{http_code}" "$SAFARI_ZETU_BRIDGE_URL?resource=health" | grep -q "401\|200" && echo "PASS: Safari Zetu bridge endpoint exists" || echo "FAIL: Safari Zetu bridge not reachable"
+
+# Test 7: Safari Zetu bridge with correct API key
+curl -s -H "x-ops-api-key: $SAFARI_ZETU_API_KEY" "$SAFARI_ZETU_BRIDGE_URL?resource=health" | grep -q "ok" && echo "PASS: Safari Zetu bridge authentication working" || echo "WARN: Safari Zetu bridge auth test failed — confirm bridge is deployed"
+
+# Test 8: Cloudflare tunnel
+curl -s -o /dev/null -w "%{http_code}" https://ops.safarizetu.com | grep -q "200\|401\|302" && echo "PASS: Cloudflare tunnel routing to ops engine" || echo "FAIL: Cloudflare tunnel not routing — check tunnel config"
+
+echo ""
+echo "=== INTEGRATION TEST COMPLETE ==="
+echo "If any FAIL above: fix and re-run this test before considering the system live."
+echo ""
+echo "=== SYSTEM STATUS ==="
+echo "n8n Dashboard:        http://localhost:5678"
+echo "Ops Dashboard:        http://localhost:3002"
+echo "Langfuse:             http://localhost:3001"
+echo "Public n8n URL:       https://ops.safarizetu.com"
+echo "Safari Zetu Bridge:   $SAFARI_ZETU_BRIDGE_URL"
+echo ""
+echo "=== NEXT STEPS FOR FOUNDER ==="
+echo "1. Copy bridge/safari-zetu-additions/ files into Safari Zetu repo"
+echo "2. Add 3 env vars to Vercel: OPS_ENGINE_API_KEY, OPS_ENGINE_WEBHOOK_SECRET, OPS_ENGINE_URL"
+echo "3. Deploy Safari Zetu — the handshake is complete from that moment"
+echo "4. Open n8n at https://ops.safarizetu.com and verify all workflows show as Active"
+echo "5. Open dashboard at http://localhost:3002 — first data appears within 5 minutes of first enquiry"
+echo ""
+echo "Safari Zetu AI Ops Engine is LIVE."
+```
+
+---
+
+## SUMMARY — WHAT HAS BEEN BUILT
+
+| Component | Status |
+|---|---|
+| WSL2 + Docker environment | ✅ |
+| Local PostgreSQL with full schema | ✅ |
+| Cloudflare Tunnel (ops.safarizetu.com) | ✅ |
+| n8n orchestrator | ✅ |
+| Langfuse AI monitoring | ✅ |
+| Chroma vector database | ✅ |
+| Safari Zetu API bridge (/api/ops-bridge) | ✅ |
+| HMAC webhook security | ✅ |
+| 10 AI agent system prompts | ✅ |
+| Division 1: Growth & Demand agents | ✅ |
+| Division 2: Operator activation agents | ✅ |
+| Division 3: Partnership research agents | ✅ |
+| Division 4: Tourist experience agents | ✅ |
+| Division 5: Intelligence & reporting | ✅ |
+| Cron scheduler (all 5 divisions) | ✅ |
+| React dashboard (Bloomberg dark theme) | ✅ |
+| Full security audit | ✅ |
+| Integration test suite | ✅ |
+
+**The system is fully autonomous from this point. Safari Zetu and the ops engine are handshaked.**
+

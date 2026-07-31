@@ -1,0 +1,34 @@
+{
+  "name": "sweep",
+  "displayName": "Sweep",
+  "version": "1.0.0",
+  "category": "coding-agents",
+  "description": "AI-powered bug fixer that creates PRs from issues",
+  "longDescription": "AI-powered bug fixer that creates PRs from issues",
+  "pricing": "oss",
+  "url": "https://github.com/sweepai/sweep",
+  "documentation": "",
+  "installCommand": null,
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "issue-to-pr",
+    "bug-fix",
+    "automated",
+    "github-integration"
+  ],
+  "useCases": [
+    {
+      "name": "Bug Resolution",
+      "description": "Auto-fix GitHub issues with PRs",
+      "impact": "Assign bug, get PR",
+      "complexity": "medium"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}

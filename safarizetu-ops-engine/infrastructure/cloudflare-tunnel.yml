@@ -1,0 +1,41 @@
+tunnel: safarizetu-ops
+credentials-file: /etc/cloudflared/creds/credentials.json
+
+# ── INGRESS RULES ─────────────────────────────────────────────
+# Order matters — first match wins.
+# All traffic goes to the ops_network container services.
+ingress:
+
+  # Ops Engine — AI agent webhooks, metrics, API
+  - hostname: ops.safarizetu.com
+    service: http://ops-engine:3000
+    originRequest:
+      noTLSVerify: false
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      tcpKeepAlive: 30s
+      keepAliveTimeout: 90s
+
+  # Monitoring Dashboard — React UI for viewing agent runs
+  - hostname: dashboard.safarizetu.com
+    service: http://ops-dashboard:3002
+    originRequest:
+      noTLSVerify: false
+      connectTimeout: 30s
+
+  # N8N Orchestrator — workflow builder & incoming webhooks
+  - hostname: n8n.safarizetu.com
+    service: http://n8n:5678
+    originRequest:
+      noTLSVerify: false
+      connectTimeout: 30s
+
+  # Langfuse — LLM observability (optional external access)
+  - hostname: langfuse.safarizetu.com
+    service: http://langfuse:3000
+    originRequest:
+      noTLSVerify: false
+      connectTimeout: 30s
+
+  # Catch-all — return 404 for any unmatched hostname
+  - service: http_status:404

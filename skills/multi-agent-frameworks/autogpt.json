@@ -1,0 +1,34 @@
+{
+  "name": "autogpt",
+  "displayName": "AutoGPT",
+  "version": "1.0.0",
+  "category": "multi-agent-frameworks",
+  "description": "Pioneer agent, now full platform with visual builder",
+  "longDescription": "Pioneer agent, now full platform with visual builder",
+  "pricing": "oss",
+  "url": "https://autogpt.net",
+  "documentation": "",
+  "installCommand": "pip install autogpt",
+  "pipInstall": null,
+  "dockerImage": null,
+  "mcpServers": [],
+  "tools": [],
+  "capabilities": [
+    "pioneer",
+    "visual-builder",
+    "platform",
+    "autonomous"
+  ],
+  "useCases": [
+    {
+      "name": "Autonomous Tasks",
+      "description": "Run fully autonomous agent tasks",
+      "impact": "Pioneer in agent space",
+      "complexity": "high"
+    }
+  ],
+  "integrations": [],
+  "requirements": {},
+  "examples": [],
+  "relatedAgents": []
+}
