@@ -56,6 +56,12 @@ const logger = winston.createLogger({
 
 // ── DATABASE (optional — works without PostgreSQL) ─────────────
 let pool: any = null
+let dbConnected = false
+let mockWarningTimer: ReturnType<typeof setInterval> | null = null
+
+export function isDbConnected(): boolean {
+  return dbConnected
+}
 
 async function initPool() {
   try {
@@ -66,15 +72,23 @@ async function initPool() {
       idleTimeoutMillis: 30000
     })
     await pool.query('SELECT 1')
+    dbConnected = true
     logger.info('PostgreSQL connected')
   } catch (error: any) {
-    logger.warn('PostgreSQL not available — running in memory-only mode')
+    dbConnected = false
+    logger.error('CRITICAL: PostgreSQL not available — running in memory-only mode. DATA WILL NOT PERSIST.')
+    logger.error(`DB connection error: ${error.message}`)
+    logger.error('Set DATABASE_URL and ensure PostgreSQL is running. All data stored in memory and will be lost on restart.')
     pool = {
       query: async (text: string, params?: any[]) => {
-        logger.debug(`[DB-mock] ${text.substring(0, 80)}...`)
+        logger.debug(`[DB-MOCK] ${text.substring(0, 80)}...`)
         return { rows: [{ count: 0, id: 'mock-' + Date.now() }] }
       }
     }
+    // Repeat warning every 5 minutes so it's visible in logs
+    mockWarningTimer = setInterval(() => {
+      logger.error('REMINDER: Running in DB-MOCK mode — no data is being persisted')
+    }, 5 * 60 * 1000)
   }
 }
 

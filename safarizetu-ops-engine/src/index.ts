@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import { createServer } from 'http'
-import { logger } from './services/ai-agent.service'
+import { logger, isDbConnected } from './services/ai-agent.service'
 import { startScheduler } from './scheduler/cron'
 import { startMailingScheduler } from './scheduler/mailing-cron'
 import { loadSafariCatalog, loadPartnershipData } from './services/chroma.service'
@@ -44,12 +44,15 @@ async function main() {
   const server = createServer(async (req, res) => {
     // Health check
     if (req.url === '/health' && req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json' })
+      const dbStatus = isDbConnected() ? 'connected' : 'mock-mode'
+      const healthStatus = isDbConnected() ? 200 : 503
+      res.writeHead(healthStatus, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
-        status: 'ok',
+        status: isDbConnected() ? 'ok' : 'degraded',
         service: 'safarizetu-ops-engine',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
+        db: dbStatus,
         langfuse: isLangfuseEnabled() ? 'connected' : 'in-memory-only'
       }))
       return
