@@ -212,5 +212,59 @@ RULES:
     }
   })
 
-  logger.info('Mailing list scheduler started — 3 campaigns active')
+  // ── POST-TRIP REVIEW REQUEST — Daily 10AM ─────────────────
+  cron.schedule('0 10 * * *', async () => {
+    try {
+      logger.info('Checking for completed trips needing review requests...')
+
+      // Find bookings completed 3 days ago (trip end date)
+      const { rows: completedTrips } = await pool.query(`
+        SELECT DISTINCT tourist_email, tourist_name, destination, id as booking_id
+        FROM enquiry_log
+        WHERE status = 'completed'
+        AND created_at < NOW() - INTERVAL '3 days'
+        AND created_at > NOW() - INTERVAL '4 days'
+        AND tourist_email IS NOT NULL
+        LIMIT 50
+      `)
+
+      if (completedTrips.length === 0) {
+        logger.info('No completed trips for review requests')
+        return
+      }
+
+      const result = await callAgent({
+        agentName: 'review_requester',
+        division: 'growth',
+        model: 'light',
+        systemPrompt: AGENT_PROMPTS.post_trip_review_request,
+        userMessage: `Write review request emails for ${completedTrips.length} tourists who recently completed safaris to: ${[...new Set(completedTrips.map((t: any) => t.destination))].join(', ')}`,
+        triggerType: 'post_trip_review',
+      })
+
+      let sent = 0
+      for (const trip of completedTrips) {
+        try {
+          const personalised = result.content.replace(
+            /{{name}}/g,
+            trip.tourist_name?.split(' ')[0] || 'there'
+          )
+          await sendEmail(
+            trip.tourist_email,
+            `How was your ${trip.destination || 'safari'}? We'd love to hear from you`,
+            personalised
+          )
+          sent++
+          await new Promise(r => setTimeout(r, 2000))
+        } catch { /* skip failed */ }
+      }
+
+      logger.info(`Post-trip review requests sent: ${sent}/${completedTrips.length}`)
+
+    } catch (error: any) {
+      logger.error('Post-trip review request cron failed:', error.message)
+    }
+  })
+
+  logger.info('Mailing list scheduler started — 4 campaigns active')
 }

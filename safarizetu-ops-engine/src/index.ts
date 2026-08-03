@@ -847,6 +847,35 @@ ${memorySnippet}${complaintSnippet}`
       return
     }
 
+    // POST /api/booking-chat — Conversational booking bot
+    if (req.url === '/api/booking-chat' && req.method === 'POST') {
+      try {
+        const { message, platform, userId, conversationId } = await parseBody()
+        if (!message) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'message required' }))
+          return
+        }
+
+        const { handleIncomingMessage } = await import('./agents/booking-bot')
+        const result = await handleIncomingMessage({
+          conversation_id: conversationId || `conv-${Date.now()}`,
+          platform: platform || 'web',
+          platform_user_id: userId || `user-${Date.now()}`,
+          message,
+          tourist_id: userId,
+        })
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(result))
+      } catch (e: any) {
+        logger.error(`Booking chat error: ${e.message}`)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
     // POST /api/emails/preview — Preview email templates
     if (req.url === '/api/emails/preview' && req.method === 'POST') {
       try {

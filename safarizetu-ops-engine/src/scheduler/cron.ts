@@ -19,6 +19,10 @@ import { runQuarterlyResearch } from '../agents/market-researcher'
 import { runMonthlyInfluencerOutreach } from '../agents/influencer-manager'
 import { runWeeklyLocalization } from '../agents/localizer'
 import { runQuarterlySustainability } from '../agents/sustainability-tracker'
+import { checkUsageLimits, runMonthlyBilling } from '../agents/billing-agent'
+import { generateAllDocs } from '../agents/doc-generator'
+import { callAgent } from '../services/ai-agent.service'
+import { AGENT_PROMPTS } from '../agents/prompts'
 
 export function startScheduler(): void {
   logger.info('Starting cron scheduler — All 4 Tiers (34 agents) included')
@@ -312,6 +316,73 @@ export function startScheduler(): void {
       logger.info(`Sustainability: ESG score ${result.esg_score}, ${result.improvements_recommended} improvements`)
     } catch (error: any) {
       logger.error('Sustainability cron failed:', error.message)
+    }
+  })
+
+  // ── TIER 3: DAILY 4AM — Billing Usage Check ─────────────────
+  cron.schedule('0 4 * * *', async () => {
+    try {
+      logger.info('Running daily billing usage check...')
+      const { rows: tenants } = await pool.query(
+        `SELECT DISTINCT operator_email FROM operator_activation_queue WHERE activation_stage = 'activated' LIMIT 50`
+      )
+      for (const tenant of tenants) {
+        await checkUsageLimits(tenant.operator_email)
+      }
+      logger.info(`Billing usage check: ${tenants.length} tenants checked`)
+    } catch (error: any) {
+      logger.error('Billing usage check cron failed:', error.message)
+    }
+  })
+
+  // ── TIER 3: 1ST OF MONTH 2AM — Monthly Billing ─────────────
+  cron.schedule('0 2 1 * *', async () => {
+    try {
+      logger.info('Running monthly billing...')
+      const result = await runMonthlyBilling()
+      logger.info(`Monthly billing: ${result.invoices_generated} invoices, $${result.total_revenue.toFixed(2)} revenue`)
+    } catch (error: any) {
+      logger.error('Monthly billing cron failed:', error.message)
+    }
+  })
+
+  // ── TIER 2: SUNDAY 3AM — Weekly Doc Regeneration ──────────
+  cron.schedule('0 3 * * 0', async () => {
+    try {
+      logger.info('Regenerating documentation...')
+      const result = await generateAllDocs()
+      logger.info(`Docs regenerated: ${result.api_docs} API docs, ${result.guides} guides, ${result.faqs} FAQs, ${result.help_articles} help articles`)
+    } catch (error: any) {
+      logger.error('Doc regeneration cron failed:', error.message)
+    }
+  })
+
+  // ── TIER 2: MONDAY 8AM — Weekly Intelligence Report ────────
+  cron.schedule('0 8 * * 1', async () => {
+    try {
+      logger.info('Generating weekly intelligence report...')
+      const { rows: [metrics] } = await pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as enquiries_this_week,
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days') as enquiries_last_week,
+          COUNT(*) FILTER (WHERE activation_stage = 'activated' AND updated_at > NOW() - INTERVAL '7 days') as operators_activated,
+          SUM(cost_usd) FILTER (WHERE started_at > NOW() - INTERVAL '7 days') as total_cost
+        FROM enquiry_log, operator_activation_queue, agent_run_log
+      `)
+
+      const result = await callAgent({
+        agentName: 'intelligence_reporter',
+        division: 'operations',
+        model: 'light',
+        systemPrompt: AGENT_PROMPTS.weekly_intelligence_report,
+        userMessage: `Weekly metrics: ${JSON.stringify(metrics)}`,
+        triggerType: 'scheduled',
+        triggerPayload: metrics,
+      })
+
+      logger.info(`Weekly intelligence report generated`)
+    } catch (error: any) {
+      logger.error('Weekly intelligence report cron failed:', error.message)
     }
   })
 

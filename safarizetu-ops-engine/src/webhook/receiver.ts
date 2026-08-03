@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import { acknowledgeEnquiry, sendOperatorActivation } from '../agents/division1-growth'
+import { generateContract, sendContractToPartner } from '../agents/contract-generator'
 import { logger, pool } from '../services/ai-agent.service'
 import { escapeHtml, detectSqlInjection, detectXss, validateInputLength } from '../services/security.service'
 
@@ -129,6 +130,19 @@ export async function handleWebhook(
         )
         // Send day1 immediately
         await sendOperatorActivation(data, 'day1')
+
+        // Auto-generate partnership contract
+        try {
+          const contract = await generateContract({
+            partner_name: sanitizedName,
+            partner_type: (data.operatorType as any) || 'lodge',
+            contact_email: sanitizedEmail,
+          })
+          await sendContractToPartner(contract, sanitizedEmail)
+          logger.info(`Contract generated and sent for operator: ${sanitizedName}`)
+        } catch (contractErr: any) {
+          logger.error(`Contract generation failed for ${sanitizedName}: ${contractErr.message}`)
+        }
         break
 
       case 'booking.completed':
