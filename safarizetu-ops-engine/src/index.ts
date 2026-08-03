@@ -13,6 +13,9 @@ import { processImagesIntoMemories, getPendingMemoryStories, approveMemoryStory,
 import { getResearchDomains, getContentPrinciples } from './services/neuroscience-research.service'
 import { recordEngagement, analyzePerformance, getLearningStatus } from './services/learning-engine.service'
 import { scrapeCompetitorContent, fullCompetitorScan, getCompetitiveLandscape, getCompetitorDB } from './services/competitor-intelligence.service'
+import { storeMemory, retrieveMemory, buildTravelerProfile } from './services/memory.service'
+import { queryCollection } from './services/chroma.service'
+import { callAgent } from './services/ai-agent.service'
 import { buildPersonProfile, generatePersonalizedEmail, generatePersonalizedSMS, generatePersonalizedAd, updateProfileFromInteraction, batchPersonalize } from './services/personalization-engine.service'
 import { getDiversityReport } from './services/content-diversity.engine'
 import { analyzeImage } from './services/image-analysis.service'
@@ -637,27 +640,95 @@ async function main() {
       return
     }
 
-    // POST /api/chat — Safari concierge chat (sync, uses AI agent with DB context)
+    // POST /api/chat — Safari concierge chat (memory-aware, profile-building, complaint-detecting)
     if (req.url === '/api/chat' && req.method === 'POST') {
       try {
-        const { messages } = await parseBody()
+        const { messages, userId, sessionId } = await parseBody()
         if (!messages || !Array.isArray(messages)) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'messages array required' }))
           return
         }
 
-        // Import callAgent dynamically to avoid circular deps
-        const { callAgent } = await import('./services/ai-agent.service')
+        const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop()?.content || ''
+        const chatUserId = userId || sessionId || `anon-${Date.now()}`
 
-        // Build conversation context
-        const conversation = messages.map((m: any) => `${m.role}: ${m.content}`).join('\n')
+        // 1. Load memory context — what does this user care about?
+        let memoryContext = ''
+        let travelerProfile = null
+        try {
+          const memories = await retrieveMemory(chatUserId, undefined, 10)
+          if (memories.length > 0) {
+            const prefs = memories.filter(m => m.category === 'traveler_preference')
+            const bookings = memories.filter(m => m.category === 'booking_history')
+            const context = memories.filter(m => m.category === 'conversation_context')
 
-        const result = await callAgent({
-          agentName: 'safari_concierge',
-          division: 'growth',
-          model: 'light',
-          systemPrompt: `You are Safari Zetu's AI safari concierge — a friendly, knowledgeable expert on Zimbabwean wildlife experiences.
+            memoryContext = [
+              prefs.length ? `Traveler preferences: ${prefs.map(m => `${m.key}=${m.value}`).join(', ')}` : '',
+              bookings.length ? `Past bookings: ${bookings.map(m => m.value).join('; ')}` : '',
+              context.length ? `Recent context: ${context.map(m => m.value).join('; ')}` : '',
+            ].filter(Boolean).join('\n')
+          }
+
+          // Build profile if userId provided
+          if (userId) {
+            travelerProfile = await buildTravelerProfile(userId)
+          }
+        } catch (e: any) {
+          logger.warn(`Memory load failed: ${e.message}`)
+        }
+
+        // 2. Vector search — find relevant lodges/parks for this query
+        let vectorContext = ''
+        try {
+          const results = await queryCollection('safari-catalog', lastUserMessage, 3)
+          if (results.length > 0) {
+            vectorContext = results
+              .map(r => `[${r.metadata?.type || 'info'}] ${r.text}`)
+              .join('\n')
+          }
+        } catch (e: any) {
+          logger.warn(`Vector search failed: ${e.message}`)
+        }
+
+        // 3. Complaint detection — check sentiment before sending to LLM
+        let complaintFlag = null
+        try {
+          const detectResult = await callAgent({
+            agentName: 'complaint_detector',
+            division: 'operations',
+            model: 'light',
+            systemPrompt: `Analyze this message for complaints or dissatisfaction. Return JSON only:
+{"sentiment":"positive|neutral|negative|urgent","complaint_detected":true|false,"severity":"low|medium|high|critical","issue_summary":"one sentence if complaint"}
+LOW = general negative sentiment. MEDIUM = expressed disappointment. HIGH = specific complaint. CRITICAL = safety/health/financial dispute.`,
+            userMessage: lastUserMessage,
+            triggerType: 'complaint_detection',
+            maxTokens: 150,
+          })
+          const jsonMatch = detectResult.content.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            complaintFlag = JSON.parse(jsonMatch[0])
+          }
+        } catch (e: any) {
+          logger.warn(`Complaint detection failed: ${e.message}`)
+        }
+
+        // 4. Build enhanced system prompt with all context
+        const profileSnippet = travelerProfile ? `
+RETURNING TRAVELER:
+- Interests: ${travelerProfile.preferences?.['preferred_destination'] || 'unknown'}
+- Travel style: ${travelerProfile.communicationStyle}
+- Past bookings: ${travelerProfile.pastBookings.length > 0 ? travelerProfile.pastBookings.join(', ') : 'none'}
+- Welcome them back if they've visited before.` : ''
+
+        const memorySnippet = memoryContext ? `\n\nREMEMBERED CONTEXT (from past conversations):\n${memoryContext}` : ''
+
+        const vectorSnippet = vectorContext ? `\n\nRELEVANT CATALOG RESULTS:\n${vectorContext}` : ''
+
+        const complaintSnippet = complaintFlag?.complaint_detected ?
+          `\n\n⚠️ COMPLAINT DETECTED (${complaintFlag.severity}): ${complaintFlag.issue_summary}. Acknowledge empathetically, offer specific resolution. If HIGH/CRITICAL, say you'll connect them with the team immediately.` : ''
+
+        const systemPrompt = `You are Safari Zetu's AI safari concierge — a friendly, knowledgeable expert on Zimbabwean wildlife experiences.
 
 PERSONALITY:
 - Warm, enthusiastic, professional. Like a trusted friend who happens to be a safari expert.
@@ -665,6 +736,7 @@ PERSONALITY:
 - Keep responses concise (2-4 sentences max unless listing options). No walls of text.
 - Never say "I don't know" — instead say "Let me connect you with our team for that specific detail."
 - Use light emoji sparingly (🌍 🦁 🏞️) but don't overdo it.
+${profileSnippet}
 
 KNOWLEDGE:
 - Zimbabwe destinations: Victoria Falls, Hwange, Mana Pools, Matobo, Great Zimbabwe, Eastern Highlands (Bvumba, Nyanga), Kariba, Chobe border area
@@ -673,6 +745,7 @@ KNOWLEDGE:
 - Best seasons: May-Oct (dry, best wildlife), Nov-Apr (green season, fewer crowds, baby animals)
 - Zimbabwe is safe for tourists, locals are warm and welcoming
 - Safari Zetu is a curated marketplace connecting guests with verified local operators
+${vectorSnippet}
 
 RULES:
 - Always respond helpfully. Never refuse to chat.
@@ -680,15 +753,92 @@ RULES:
 - If the user shares dates, group size, or interests, acknowledge and build on that.
 - For complex itineraries, suggest they complete the full enquiry so our team can craft a custom plan.
 - Never make up specific availability or book directly — always route to the enquiry flow for final confirmation.
-- Keep responses under 150 words unless listing multiple options.`,
+- Keep responses under 150 words unless listing multiple options.
+- If catalog results above match the user's query, reference specific lodges/parks by name.
+${memorySnippet}${complaintSnippet}`
+
+        // 5. Build conversation context
+        const conversation = messages.map((m: any) => `${m.role}: ${m.content}`).join('\n')
+
+        // 6. Call the LLM
+        const { callAgent: callAgentFn } = await import('./services/ai-agent.service')
+        const result = await callAgentFn({
+          agentName: 'safari_concierge',
+          division: 'growth',
+          model: 'light',
+          systemPrompt,
           userMessage: conversation,
           triggerType: 'chat',
-          triggerPayload: { messages },
+          triggerPayload: { messages, userId: chatUserId, hasProfile: !!travelerProfile },
           maxTokens: 500,
         })
 
+        // 7. Save conversation to memory
+        try {
+          await storeMemory(chatUserId, 'conversation_context', `chat-${Date.now()}`, lastUserMessage, {
+            sessionId,
+            timestamp: new Date().toISOString(),
+          })
+
+          // Extract and store preferences if mentioned
+          const lowerMsg = lastUserMessage.toLowerCase()
+          if (lowerMsg.includes('hwange') || lowerMsg.includes('victoria') || lowerMsg.includes('mana pools') || lowerMsg.includes('kariba')) {
+            const dest = lowerMsg.includes('hwange') ? 'Hwange' :
+                        lowerMsg.includes('victoria') ? 'Victoria Falls' :
+                        lowerMsg.includes('mana pools') ? 'Mana Pools' : 'Kariba'
+            await storeMemory(chatUserId, 'traveler_preference', 'preferred_destination', dest)
+          }
+          if (lowerMsg.includes('budget') || lowerMsg.includes('cheap') || lowerMsg.includes('affordable')) {
+            await storeMemory(chatUserId, 'traveler_preference', 'budget_sensitivity', 'budget-conscious')
+          }
+          if (lowerMsg.includes('luxury') || lowerMsg.includes('premium') || lowerMsg.includes('high-end')) {
+            await storeMemory(chatUserId, 'traveler_preference', 'budget_sensitivity', 'luxury')
+          }
+          if (lowerMsg.includes('honeymoon') || lowerMsg.includes('anniversary')) {
+            await storeMemory(chatUserId, 'traveler_preference', 'occasion', lowerMsg.includes('honeymoon') ? 'honeymoon' : 'anniversary')
+          }
+          if (lowerMsg.includes('family') || lowerMsg.includes('kids') || lowerMsg.includes('children')) {
+            await storeMemory(chatUserId, 'traveler_preference', 'group_type', 'family')
+          }
+        } catch (e: any) {
+          logger.warn(`Memory save failed: ${e.message}`)
+        }
+
+        // 8. Track engagement
+        try {
+          await recordEngagement({
+            platform: 'web_chat',
+            content_type: 'concierge_response',
+            memory_type: 'conversation',
+            tone: 'warm',
+            topic: lastUserMessage.substring(0, 50),
+            psychology_used: complaintFlag?.complaint_detected ? ['empathy', 'resolution'] : ['recommendation'],
+            impressions: 1,
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            saves: 0,
+            clicks: 0,
+            reach: 1,
+            booked: false,
+            recorded_at: new Date(),
+          })
+        } catch (e: any) {
+          // Non-critical, don't fail the request
+        }
+
+        // 9. Return response with optional escalation flag
+        const response: any = { reply: result.content }
+        if (complaintFlag?.complaint_detected && ['high', 'critical'].includes(complaintFlag.severity)) {
+          response.escalation = {
+            required: true,
+            severity: complaintFlag.severity,
+            summary: complaintFlag.issue_summary,
+          }
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ reply: result.content }))
+        res.end(JSON.stringify(response))
       } catch (e: any) {
         logger.error(`Chat error: ${e.message}`)
         res.writeHead(500, { 'Content-Type': 'application/json' })
