@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import { createServer } from 'http'
-import { logger, isDbConnected } from './services/ai-agent.service'
+import { logger, isDbConnected, sendEmail, pool } from './services/ai-agent.service'
 import { startScheduler } from './scheduler/cron'
 import { startMailingScheduler } from './scheduler/mailing-cron'
 import { loadSafariCatalog, loadPartnershipData } from './services/chroma.service'
@@ -20,6 +20,8 @@ import { buildPersonProfile, generatePersonalizedEmail, generatePersonalizedSMS,
 import { getDiversityReport } from './services/content-diversity.engine'
 import { analyzeImage } from './services/image-analysis.service'
 import { loadAllSkills, getAllSkills, getSkill, saveSkill, deleteSkill, buildSkillContext } from './services/skill-manager.service'
+import { draftPartnershipOutreach } from './agents/division3-partnerships'
+import { verifyEmail, isNeverBounceConfigured } from './services/neverbounce.service'
 
 async function main() {
   logger.info('Safari Zetu Ops Engine starting...')
@@ -261,6 +263,164 @@ async function main() {
         await rejectMemoryStory(draftId, reason)
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ rejected: draftId }))
+      } catch (e: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // ── GENERIC APPROVAL QUEUE ENDPOINTS ─────────────────────────
+    // GET /api/approval/pending — List ALL pending items (partnership, proposals, etc.)
+    if (req.url === '/api/approval/pending' && req.method === 'GET') {
+      try {
+        const { rows: items } = await pool.query(
+          `SELECT * FROM approval_queue WHERE status = 'pending'
+           ORDER BY
+             CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END,
+             created_at ASC
+           LIMIT 50`
+        )
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ items, count: items.length }))
+      } catch (e: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/approval/approve/:id — Approve item → send if partnership_email
+    const approvalMatch = req.url?.match(/^\/api\/approval\/approve\/(.+)$/)
+    if (approvalMatch && req.method === 'POST') {
+      try {
+        const itemId = approvalMatch[1]
+        const { rows } = await pool.query(
+          `UPDATE approval_queue SET status = 'approved', reviewed_at = NOW() WHERE id = $1 RETURNING *`,
+          [itemId]
+        )
+        if (rows.length === 0) {
+          res.writeHead(404, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Item not found' }))
+          return
+        }
+        const item = rows[0]
+
+        // If it's a partnership email, send it now and log to outreach_log
+        let sendResult = null
+        if (item.item_type === 'partnership_email' && item.reference_id) {
+          const { rows: partners } = await pool.query(
+            `SELECT * FROM partnership_pipeline WHERE id = $1`,
+            [item.reference_id]
+          )
+          const partner = partners[0]
+          if (partner?.contact_email) {
+            // Verify email with NeverBounce if configured
+            if (isNeverBounceConfigured()) {
+              const verification = await verifyEmail(partner.contact_email)
+              if (verification.status === 'invalid' || verification.status === 'disposable') {
+                logger.warn(`Partner email ${partner.contact_email} is ${verification.status} — skipping send`)
+                sendResult = { skipped: true, reason: `Email ${verification.status}` }
+              }
+            }
+
+            if (!sendResult?.skipped) {
+              // Extract subject from the email content (first line or "Re:" pattern)
+              const lines = item.full_content.split('\n').filter((l: string) => l.trim())
+              const subjectMatch = item.full_content.match(/subject:\s*(.+)/i)
+              const subject = subjectMatch ? subjectMatch[1].trim() : `Partnership: Safari Zetu × ${partner.company_name}`
+
+              try {
+                const messageId = await sendEmail(
+                  partner.contact_email,
+                  subject,
+                  item.full_content
+                )
+
+                // Log to outreach_log
+                await pool.query(
+                  `INSERT INTO outreach_log (entity_type, entity_id, email_to, email_subject, email_body, email_type, resend_message_id, status, approved_at, sent_at, agent_name)
+                   VALUES ('partner', $1, $2, $3, $4, 'partnership_outreach', $5, 'sent', NOW(), NOW(), 'outreach_email_drafter')`,
+                  [item.reference_id, partner.contact_email, subject, item.full_content, messageId]
+                )
+
+                // Update partnership status
+                await pool.query(
+                  `UPDATE partnership_pipeline SET status = 'outreach_sent', first_contact_at = COALESCE(first_contact_at, NOW()), last_contact_at = NOW(), updated_at = NOW() WHERE id = $1`,
+                  [item.reference_id]
+                )
+
+                sendResult = { sent: true, to: partner.contact_email, messageId }
+                logger.info(`Partnership outreach sent to ${partner.contact_email} (${partner.company_name})`)
+              } catch (sendErr: any) {
+                sendResult = { sent: false, error: sendErr.message }
+                logger.error(`Failed to send partnership email: ${sendErr.message}`)
+              }
+            }
+          } else {
+            sendResult = { skipped: true, reason: 'No contact email on file' }
+          }
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ approved: itemId, type: item.item_type, send: sendResult }))
+      } catch (e: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/approval/reject/:id — Reject an approval queue item
+    const approvalRejectMatch = req.url?.match(/^\/api\/approval\/reject\/(.+)$/)
+    if (approvalRejectMatch && req.method === 'POST') {
+      try {
+        const itemId = approvalRejectMatch[1]
+        const { reason } = await parseBody()
+        await pool.query(
+          `UPDATE approval_queue SET status = 'rejected', reviewed_at = NOW(), reviewer_notes = $1 WHERE id = $2`,
+          [reason || null, itemId]
+        )
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ rejected: itemId }))
+      } catch (e: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/approval/approve-all — Approve all pending items
+    if (req.url === '/api/approval/approve-all' && req.method === 'POST') {
+      try {
+        const { rows } = await pool.query(
+          `UPDATE approval_queue SET status = 'approved', reviewed_at = NOW() WHERE status = 'pending' RETURNING id`
+        )
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ approved_count: rows.length }))
+      } catch (e: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/partners/draft-outreach/:id — Draft outreach email for a partner
+    const draftOutreachMatch = req.url?.match(/^\/api\/partners\/draft-outreach\/(.+)$/)
+    if (draftOutreachMatch && req.method === 'POST') {
+      try {
+        const partnerId = draftOutreachMatch[1]
+        const { rows: partners } = await pool.query(
+          `SELECT * FROM partnership_pipeline WHERE id = $1`, [partnerId]
+        )
+        if (partners.length === 0) {
+          res.writeHead(404, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Partner not found' }))
+          return
+        }
+        await draftPartnershipOutreach(partners[0])
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ drafted: true, partner: partners[0].company_name }))
       } catch (e: any) {
         res.writeHead(500, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: e.message }))

@@ -37,21 +37,21 @@ export function useHealth() {
 export function useApprovalQueue() {
   const qc = useQueryClient()
   const approve = useMutation({
-    mutationFn: (id: string) => poster(`/api/content/approve/${id}`),
+    mutationFn: (id: string) => poster(`/api/approval/approve/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['approval-queue'] }),
   })
   const reject = useMutation({
-    mutationFn: (id: string) => poster(`/api/content/reject/${id}`),
+    mutationFn: (id: string) => poster(`/api/approval/reject/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['approval-queue'] }),
   })
   const approveAll = useMutation({
-    mutationFn: () => poster('/api/content/approve-all'),
+    mutationFn: () => poster('/api/approval/approve-all'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['approval-queue'] }),
   })
   return {
     ...useQuery({
       queryKey: ['approval-queue'],
-      queryFn: () => fetcher<{ items: ApprovalItem[] }>('/api/content/pending'),
+      queryFn: () => fetcher<{ items: ApprovalItem[] }>('/api/approval/pending'),
       refetchInterval: 30000,
     }),
     approve, reject, approveAll,

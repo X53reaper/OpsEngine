@@ -1,7 +1,7 @@
 import cron from 'node-cron'
 import { pool, logger, fetchFromSafariZetu } from '../services/ai-agent.service'
 import { generateSeoContent, sendOperatorActivation } from '../agents/division1-growth'
-import { researchPartnership } from '../agents/division3-partnerships'
+import { researchPartnership, draftPartnershipOutreach } from '../agents/division3-partnerships'
 import { processPendingFeedback } from '../pipeline/feedback-pipeline'
 import { runDailyProspecting } from '../agents/sales-prospector'
 import { runDailyPricing } from '../agents/dynamic-pricing'
@@ -113,7 +113,7 @@ export function startScheduler(): void {
     }
   })
 
-  // ── SUNDAY 6PM: Research unresearched partnerships ────────
+  // ── SUNDAY 6PM: Research unresearched partnerships + draft outreach ──
   cron.schedule('0 18 * * 0', async () => {
     try {
       const { rows: partners } = await pool.query(
@@ -122,6 +122,20 @@ export function startScheduler(): void {
       for (const partner of partners) {
         await researchPartnership(partner)
         await new Promise(r => setTimeout(r, 5000))
+
+        // After research, draft outreach email for approval
+        try {
+          const { rows: updated } = await pool.query(
+            `SELECT * FROM partnership_pipeline WHERE id = $1 AND status = 'researched'`,
+            [partner.id]
+          )
+          if (updated.length > 0) {
+            await draftPartnershipOutreach(updated[0])
+            logger.info(`Outreach drafted for ${partner.company_name} — queued for approval`)
+          }
+        } catch (draftErr: any) {
+          logger.error(`Draft outreach failed for ${partner.company_name}: ${draftErr.message}`)
+        }
       }
     } catch (error: any) {
       logger.error('Partnership research cron failed:', error.message)

@@ -63,3 +63,15 @@ CREATE TABLE IF NOT EXISTS competitor_content (
 );
 CREATE INDEX idx_competitor_content_tactic ON competitor_content(psychological_tactic);
 CREATE INDEX idx_competitor_content_captured ON competitor_content(captured_at DESC);
+
+-- ── FIX: approval_queue CHECK constraint ────────────────────────
+-- memory-storytelling.service.ts inserts item_type='memory_story' which isn't in the original CHECK
+-- Drop and recreate with 'memory_story' added
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'approval_queue_item_type_check') THEN
+    ALTER TABLE approval_queue DROP CONSTRAINT approval_queue_item_type_check;
+    ALTER TABLE approval_queue ADD CONSTRAINT approval_queue_item_type_check
+      CHECK (item_type IN ('outreach_email','partnership_email','content','proposal','report','memory_story'));
+  END IF;
+END $$;
