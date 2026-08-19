@@ -7,7 +7,7 @@ import { startTrace, endTrace, logGeneration } from './observability.service'
 
 // ── LOG REDACTION FILTER ──────────────────────────────────────────
 // Masks API keys, emails, phone numbers, and names from log output
-const REDACTION_PATTERNS: [RegExp, string][] = [
+const REDACTION_PATTERNS: [RegExp, string | ((match: string) => string)][] = [
   [/sk-[a-zA-Z0-9_-]{20,}/g, '[REDACTED_API_KEY]'],
   [/re_[a-zA-Z0-9_-]{20,}/g, '[REDACTED_RESEND_KEY]'],
   [/tvly-[a-zA-Z0-9_-]{20,}/g, '[REDACTED_TAVILY_KEY]'],
@@ -25,7 +25,11 @@ const REDACTION_PATTERNS: [RegExp, string][] = [
 function redactLog(message: string): string {
   let redacted = message
   for (const [pattern, replacement] of REDACTION_PATTERNS) {
-    redacted = redacted.replace(pattern, replacement)
+    if (typeof replacement === 'function') {
+      redacted = redacted.replace(pattern, replacement as (match: string) => string)
+    } else {
+      redacted = redacted.replace(pattern, replacement)
+    }
   }
   return redacted
 }
@@ -40,7 +44,7 @@ const logger = winston.createLogger({
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(({ timestamp, level, message, ...meta }) => {
-      const redactedMessage = redactLog(message)
+      const redactedMessage = redactLog(String(message))
       const redactedMeta = JSON.stringify(meta, (key, value) => {
         if (typeof value === 'string') return redactLog(value)
         return value
