@@ -1195,6 +1195,344 @@ ${memorySnippet}${complaintSnippet}`
       return
     }
 
+    // ── ADMIN PANEL ─────────────────────────────────────────────
+    // GET /admin — serve admin HTML
+    if (req.url === '/admin' || req.url === '/admin/') {
+      const adminHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SafariZetu Ops Engine — Admin</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0a;color:#e0e0e0;min-height:100vh}
+    .header{background:#111;border-bottom:1px solid #222;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+    .header h1{font-size:18px;color:#2D4231}.header .status{font-size:12px;color:#666}
+    .container{max-width:1200px;margin:0 auto;padding:24px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px}
+    .card{background:#111;border:1px solid #222;border-radius:8px;padding:20px}
+    .card h3{font-size:14px;color:#B37038;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px}
+    .card p{font-size:12px;color:#888;margin-bottom:12px}
+    .btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s}
+    .btn-primary{background:#2D4231;color:#fff}.btn-primary:hover{background:#3a5a3f}
+    .btn-gold{background:#B37038;color:#fff}.btn-gold:hover{background:#c9803f}
+    .btn-danger{background:#8b2500;color:#fff}.btn-danger:hover{background:#a33000}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+    .metric{text-align:center;padding:16px}.metric .value{font-size:32px;font-weight:700;color:#2D4231}
+    .metric .label{font-size:11px;color:#888;margin-top:4px;text-transform:uppercase}
+    .log{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:12px;max-height:400px;overflow-y:auto;font-family:'Fira Code',monospace;font-size:11px;line-height:1.6}
+    .log-entry{border-bottom:1px solid #1a1a1a;padding:6px 0}.log-entry:last-child{border:none}
+    .log-time{color:#555}.log-agent{color:#B37038;font-weight:600}.log-status{padding:2px 6px;border-radius:3px;font-size:10px}
+    .log-status.success{background:#1a3a1a;color:#4ade80}.log-status.running{background:#1a2a3a;color:#60a5fa}
+    .log-status.failed{background:#3a1a1a;color:#f87171}
+    .tabs{display:flex;gap:4px;margin-bottom:16px}.tab{padding:8px 16px;background:#111;border:1px solid #222;border-radius:6px;cursor:pointer;font-size:13px;color:#888}
+    .tab.active{background:#2D4231;color:#fff;border-color:#2D4231}
+    .result-box{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:16px;margin-top:12px;white-space:pre-wrap;font-size:12px;line-height:1.5;max-height:300px;overflow-y:auto;display:none}
+    .result-box.visible{display:block}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid #333;border-top-color:#B37038;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .agents-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+    .agent-card{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:14px;transition:border-color 0.2s}
+    .agent-card:hover{border-color:#2D4231}
+    .agent-name{font-size:13px;font-weight:600;color:#e0e0e0;margin-bottom:4px}
+    .agent-desc{font-size:11px;color:#666;margin-bottom:10px}
+    .agent-trigger{width:100%}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>SafariZetu Ops Engine</h1>
+    <div class="status" id="status">Connecting...</div>
+  </div>
+  <div class="container">
+    <div class="grid" id="metrics"></div>
+    <div class="tabs">
+      <div class="tab active" data-tab="agents">Agents</div>
+      <div class="tab" data-tab="runs">Run History</div>
+      <div class="tab" data-tab="approvals">Approvals</div>
+    </div>
+    <div id="panel-agents">
+      <div class="agents-grid" id="agents-grid"></div>
+      <div class="result-box" id="agent-result"></div>
+    </div>
+    <div id="panel-runs" style="display:none">
+      <div class="log" id="runs-log"></div>
+    </div>
+    <div id="panel-approvals" style="display:none">
+      <div class="log" id="approvals-log"></div>
+      <div style="margin-top:12px">
+        <button class="btn btn-primary" onclick="approveAll()">Approve All Pending</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const API = window.location.origin;
+    const agents = [
+      {name:'newsletter-agent',label:'Newsletter Machine',desc:'Daily newsletter from safari/travel sources',cron:'Daily 7AM'},
+      {name:'competitor-ad-agent',label:'Competitor Ad Research',desc:'Analyze competitor ads + generate original concepts',cron:'Monthly 1st 9AM'},
+      {name:'seo-research-agent',label:'Advanced SEO Research',desc:'4-stage SEO pipeline: research→brief→write→humanize',cron:'Weekly Wed 5AM'},
+      {name:'seo-content-factory',label:'SEO Content Factory',desc:'Batch SEO content generation for safari keywords',cron:'Tue/Thu 6AM'},
+      {name:'telegram-orchestrator',label:'Telegram Orchestrator',desc:'Route Telegram commands to specialist agents',cron:'On-demand'},
+      {name:'social-content',label:'Social Content Calendar',desc:'Generate social media posts for all platforms',cron:'Thu 2AM'},
+      {name:'sales-prospector',label:'Sales Prospector',desc:'Cold outreach pipeline with NeverBounce verification',cron:'Mon 1AM'},
+      {name:'influencer-manager',label:'Influencer Outreach',desc:'Find and reach out to travel influencers',cron:'Fri 9AM'},
+      {name:'division1-growth',label:'Growth Division',desc:'SEO content + operator activation',cron:'Daily'},
+      {name:'division3-partnerships',label:'Partnerships Division',desc:'Research + outreach to tour operators',cron:'Sun 6PM'},
+      {name:'market-researcher',label:'Market Researcher',desc:'Quarterly deep market analysis',cron:'Quarterly'},
+      {name:'sentiment-tracker',label:'Sentiment Tracker',desc:'Monitor brand sentiment across platforms',cron:'Daily'},
+      {name:'security-monitor',label:'Security Monitor',desc:'Threat scanning + vulnerability checks',cron:'Hourly'},
+      {name:'billing-agent',label:'Billing Agent',desc:'Usage tracking + invoice generation',cron:'Daily 4AM + Monthly 1st'},
+      {name:'operator-scorer',label:'Operator Scorer',desc:'Rate operators on quality, sustainability, value',cron:'Monthly 1st 6AM'},
+      {name:'revenue-splitter',label:'Revenue Splitter',desc:'Calculate revenue splits across partners',cron:'Monthly 1st 10AM'},
+      {name:'contract-generator',label:'Contract Generator',desc:'Auto-generate partnership contracts',cron:'Webhook'},
+      {name:'doc-generator',label:'Document Generator',desc:'Weekly ops docs + reports',cron:'Daily 3AM'},
+    ];
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        ['agents','runs','approvals'].forEach(p => {
+          document.getElementById('panel-'+p).style.display = p === t.dataset.tab ? 'block' : 'none';
+        });
+        if(t.dataset.tab === 'runs') loadRuns();
+        if(t.dataset.tab === 'approvals') loadApprovals();
+      });
+    });
+
+    // Render agents
+    const grid = document.getElementById('agents-grid');
+    agents.forEach(a => {
+      grid.innerHTML += '<div class="agent-card"><div class="agent-name">'+a.label+'</div><div class="agent-desc">'+a.desc+'<br><small style="color:#555">'+a.cron+'</small></div><button class="btn btn-gold agent-trigger" onclick="triggerAgent(this,\''+a.name+'\')">Run Now</button></div>';
+    });
+
+    async function triggerAgent(btn, name) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Running...';
+      const resultBox = document.getElementById('agent-result');
+      resultBox.className = 'result-box visible';
+      resultBox.textContent = 'Triggering '+name+'...';
+      try {
+        const res = await fetch(API+'/api/admin/trigger/'+name, {method:'POST'});
+        const data = await res.json();
+        resultBox.textContent = JSON.stringify(data, null, 2);
+        btn.innerHTML = 'Run Again';
+      } catch(e) {
+        resultBox.textContent = 'Error: '+e.message;
+        btn.innerHTML = 'Retry';
+      }
+      btn.disabled = false;
+    }
+
+    async function loadRuns() {
+      const log = document.getElementById('runs-log');
+      log.innerHTML = '<div style="color:#555">Loading...</div>';
+      try {
+        const res = await fetch(API+'/api/admin/runs');
+        const data = await res.json();
+        if(!data.runs || data.runs.length === 0) {
+          log.innerHTML = '<div style="color:#555;padding:20px;text-align:center">No runs yet. Trigger an agent from the Agents tab.</div>';
+          return;
+        }
+        log.innerHTML = data.runs.map(r =>
+          '<div class="log-entry"><span class="log-time">'+new Date(r.started_at).toLocaleString()+'</span> <span class="log-agent">'+r.agent_name+'</span> <span class="log-status '+(r.status||'running')+'">'+(r.status||'running')+'</span>'+(r.result_summary?' <span style="color:#666">'+r.result_summary.substring(0,80)+'</span>':'')+'</div>'
+        ).join('');
+      } catch(e) { log.innerHTML = '<div style="color:#f87171">Error loading runs</div>'; }
+    }
+
+    async function loadApprovals() {
+      const log = document.getElementById('approvals-log');
+      log.innerHTML = '<div style="color:#555">Loading...</div>';
+      try {
+        const res = await fetch(API+'/api/approval/pending');
+        const data = await res.json();
+        if(!data.items || data.items.length === 0) {
+          log.innerHTML = '<div style="color:#555;padding:20px;text-align:center">No pending approvals.</div>';
+          return;
+        }
+        log.innerHTML = data.items.map(i =>
+          '<div class="log-entry"><span class="log-agent">'+i.item_type+'</span> <span style="color:#666">'+(i.title||i.content||'').substring(0,100)+'</span> <button class="btn btn-primary" style="margin-left:8px;padding:4px 10px;font-size:11px" onclick="approveItem(this,\\''+i.id+'\\')">Approve</button> <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="rejectItem(this,\\''+i.id+'\\')">Reject</button></div>'
+        ).join('');
+      } catch(e) { log.innerHTML = '<div style="color:#f87171">Error loading approvals</div>'; }
+    }
+
+    async function approveItem(btn, id) {
+      btn.disabled = true; btn.textContent = '...';
+      await fetch(API+'/api/approval/approve/'+id, {method:'POST'});
+      btn.parentElement.remove();
+    }
+    async function rejectItem(btn, id) {
+      btn.disabled = true; btn.textContent = '...';
+      await fetch(API+'/api/approval/reject/'+id, {method:'POST'});
+      btn.parentElement.remove();
+    }
+    async function approveAll() {
+      await fetch(API+'/api/approval/approve-all', {method:'POST'});
+      loadApprovals();
+    }
+
+    // Load metrics
+    async function loadMetrics() {
+      try {
+        const res = await fetch(API+'/health');
+        const data = await res.json();
+        document.getElementById('status').textContent = 'DB: '+(data.db||'mock')+' | Langfuse: '+(data.langfuse||'off');
+      } catch(e) { document.getElementById('status').textContent = 'Offline'; }
+      try {
+        const res = await fetch(API+'/metrics');
+        const data = await res.json();
+        document.getElementById('metrics').innerHTML =
+          '<div class="card metric"><div class="value">'+(data.total_runs||0)+'</div><div class="label">Total Runs</div></div>'+
+          '<div class="card metric"><div class="value">'+(data.total_tokens||0)+'</div><div class="label">Tokens Used</div></div>'+
+          '<div class="card metric"><div class="value">$'+(data.total_cost_usd||0).toFixed(2)+'</div><div class="label">Total Cost</div></div>'+
+          '<div class="card metric"><div class="value">'+(data.avg_latency_ms||0)+'</div><div class="label">Avg Latency (ms)</div></div>';
+      } catch(e) {}
+    }
+    loadMetrics();
+    setInterval(loadMetrics, 15000);
+  </script>
+</body>
+</html>`;
+      res.writeHead(200, { 'Content-Type': 'text/html' })
+      res.end(adminHtml)
+      return
+    }
+
+    // GET /api/admin/runs — list recent agent runs
+    if (req.url === '/api/admin/runs' && req.method === 'GET') {
+      try {
+        if (isDbConnected()) {
+          const result = await pool.query(
+            'SELECT * FROM agent_run_log ORDER BY started_at DESC LIMIT 50'
+          )
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ runs: result.rows }))
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ runs: [], mode: 'mock-db', message: 'Run logs not persisted in mock mode' }))
+        }
+      } catch (e: any) {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ runs: [], error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/admin/trigger/:agentName — manually trigger an agent
+    const triggerMatch = req.url?.match(/^\/api\/admin\/trigger\/(.+)$/)
+    if (triggerMatch && req.method === 'POST') {
+      const agentName = triggerMatch[1]
+      try {
+        let result: any
+        switch (agentName) {
+          case 'newsletter-agent': {
+            const { generateNewsletter } = await import('./agents/newsletter-agent')
+            result = await generateNewsletter()
+            break
+          }
+          case 'competitor-ad-agent': {
+            const { runCompetitorAdResearch } = await import('./agents/competitor-ad-agent')
+            result = await runCompetitorAdResearch()
+            break
+          }
+          case 'seo-research-agent': {
+            const { runSEOResearchPipeline } = await import('./agents/seo-research-agent')
+            result = await runSEOResearchPipeline('Victoria Falls safari', { language: 'en', country: 'US', brand: 'SafariZetu', audience: 'luxury travelers' })
+            break
+          }
+          case 'seo-content-factory': {
+            const { runSEOContentFactory } = await import('./agents/seo-content-factory')
+            result = await runSEOContentFactory('Hwange National Park safari', { brand: 'SafariZetu', audience: 'adventure travelers' })
+            break
+          }
+          case 'telegram-orchestrator': {
+            const { routeTelegramCommand } = await import('./agents/telegram-orchestrator')
+            result = await routeTelegramCommand({ chat_id: 'admin-test', user_id: 'admin', text: '/research Victoria Falls', has_media: false, received_at: new Date().toISOString() })
+            break
+          }
+          case 'social-content': {
+            const { generateContent } = await import('./agents/social-content')
+            result = await generateContent('instagram', 'Victoria Falls', 'adventure')
+            break
+          }
+          case 'sales-prospector': {
+            const { runDailyProspecting } = await import('./agents/sales-prospector')
+            result = await runDailyProspecting()
+            break
+          }
+          case 'influencer-manager': {
+            const { runMonthlyInfluencerOutreach } = await import('./agents/influencer-manager')
+            result = await runMonthlyInfluencerOutreach()
+            break
+          }
+          case 'division1-growth': {
+            const { generateSeoContent } = await import('./agents/division1-growth')
+            await generateSeoContent('Victoria Falls luxury safari', 'Victoria Falls', ['victoria falls safari', 'luxury safari zimbabwe'])
+            result = { status: 'completed', topic: 'Victoria Falls luxury safari' }
+            break
+          }
+          case 'division3-partnerships': {
+            const { draftPartnershipOutreach } = await import('./agents/division3-partnerships')
+            await draftPartnershipOutreach({ company_name: 'Test Partners', partner_type: 'tour_operator' })
+            result = { status: 'completed', partner: 'Test Partners' }
+            break
+          }
+          case 'market-researcher': {
+            const { runQuarterlyResearch } = await import('./agents/market-researcher')
+            result = await runQuarterlyResearch()
+            break
+          }
+          case 'sentiment-tracker': {
+            const { runDailySentimentCheck } = await import('./agents/sentiment-tracker')
+            result = await runDailySentimentCheck()
+            break
+          }
+          case 'security-monitor': {
+            const { runHourlySecurityCheck } = await import('./agents/security-monitor')
+            result = await runHourlySecurityCheck()
+            break
+          }
+          case 'billing-agent': {
+            const { runMonthlyBilling } = await import('./agents/billing-agent')
+            result = await runMonthlyBilling()
+            break
+          }
+          case 'operator-scorer': {
+            const { runMonthlyScoring } = await import('./agents/operator-scorer')
+            result = await runMonthlyScoring()
+            break
+          }
+          case 'revenue-splitter': {
+            const { runMonthlyRevenueSplitting } = await import('./agents/revenue-splitter')
+            result = await runMonthlyRevenueSplitting()
+            break
+          }
+          case 'contract-generator': {
+            const { generateContract } = await import('./agents/contract-generator')
+            result = await generateContract({ partner_name: 'Test Partner', partner_type: 'lodge', contact_email: 'test@example.com', commission_pct: 15 })
+            break
+          }
+          case 'doc-generator': {
+            const { generateAllDocs } = await import('./agents/doc-generator')
+            result = await generateAllDocs()
+            break
+          }
+          default:
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Unknown agent: '+agentName+'. Available: newsletter-agent, competitor-ad-agent, seo-research-agent, seo-content-factory, telegram-orchestrator, social-content, sales-prospector, influencer-manager, division1-growth, division3-partnerships, market-researcher, sentiment-tracker, security-monitor, billing-agent, operator-scorer, revenue-splitter, contract-generator, doc-generator' }))
+            return
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ agent: agentName, status: 'completed', result }))
+      } catch (e: any) {
+        logger.error(`Admin trigger ${agentName} failed: ${e.message}`)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ agent: agentName, status: 'failed', error: e.message }))
+      }
+      return
+    }
+
     // Default 404
     res.writeHead(404, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ error: 'Not found' }))
