@@ -1096,6 +1096,105 @@ ${memorySnippet}${complaintSnippet}`
       return
     }
 
+    // POST /api/newsletter/generate — Generate newsletter draft
+    if (req.url === '/api/newsletter/generate' && req.method === 'POST') {
+      try {
+        const { generateNewsletter } = await import('./agents/newsletter-agent')
+        const newsletter = await generateNewsletter()
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(newsletter))
+      } catch (e: any) {
+        logger.error(`Newsletter generation error: ${e.message}`)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/competitor/research — Run competitor ad research
+    if (req.url === '/api/competitor/research' && req.method === 'POST') {
+      try {
+        const { runCompetitorAdResearch } = await import('./agents/competitor-ad-agent')
+        const result = await runCompetitorAdResearch()
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(result))
+      } catch (e: any) {
+        logger.error(`Competitor research error: ${e.message}`)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/seo/research — Advanced SEO research pipeline
+    if (req.url === '/api/seo/research' && req.method === 'POST') {
+      try {
+        const { keyword, language, country, brand, audience } = await parseBody()
+        if (!keyword) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'keyword required' }))
+          return
+        }
+        const { runSEOResearchPipeline } = await import('./agents/seo-research-agent')
+        const result = await runSEOResearchPipeline(keyword, { language, country, brand, audience })
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(result))
+      } catch (e: any) {
+        logger.error(`SEO research error: ${e.message}`)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/seo/factory — SEO content factory
+    if (req.url === '/api/seo/factory' && req.method === 'POST') {
+      try {
+        const { keyword, brand, audience, country } = await parseBody()
+        if (!keyword) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'keyword required' }))
+          return
+        }
+        const { runSEOContentFactory } = await import('./agents/seo-content-factory')
+        const result = await runSEOContentFactory(keyword, { brand, audience, country })
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(result))
+      } catch (e: any) {
+        logger.error(`SEO factory error: ${e.message}`)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
+    // POST /api/telegram/route — Telegram command orchestrator
+    if (req.url === '/api/telegram/route' && req.method === 'POST') {
+      try {
+        const { chat_id, user_id, text, has_media } = await parseBody()
+        if (!text || !chat_id) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'chat_id and text required' }))
+          return
+        }
+        const { routeTelegramCommand } = await import('./agents/telegram-orchestrator')
+        const route = await routeTelegramCommand({
+          chat_id,
+          user_id,
+          text,
+          has_media: has_media || false,
+          received_at: new Date().toISOString()
+        })
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(route))
+      } catch (e: any) {
+        logger.error(`Telegram route error: ${e.message}`)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
+
     // Default 404
     res.writeHead(404, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ error: 'Not found' }))

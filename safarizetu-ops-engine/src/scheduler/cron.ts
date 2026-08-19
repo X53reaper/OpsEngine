@@ -21,6 +21,10 @@ import { runWeeklyLocalization } from '../agents/localizer'
 import { runQuarterlySustainability } from '../agents/sustainability-tracker'
 import { checkUsageLimits, runMonthlyBilling } from '../agents/billing-agent'
 import { generateAllDocs } from '../agents/doc-generator'
+import { generateNewsletter } from '../agents/newsletter-agent'
+import { runCompetitorAdResearch } from '../agents/competitor-ad-agent'
+import { runSEOResearchPipeline } from '../agents/seo-research-agent'
+import { runSEOContentFactory, generateBatchContent } from '../agents/seo-content-factory'
 import { callAgent } from '../services/ai-agent.service'
 import { AGENT_PROMPTS } from '../agents/prompts'
 
@@ -400,5 +404,55 @@ export function startScheduler(): void {
     }
   })
 
-  logger.info('All cron jobs scheduled (All 4 Tiers — 34 agents)')
+  // ── NEWSLETTER MACHINE: Daily 7AM — Generate newsletter draft ─
+  cron.schedule('0 7 * * *', async () => {
+    try {
+      logger.info('Generating daily newsletter draft...')
+      const newsletter = await generateNewsletter()
+      logger.info(`Newsletter generated: "${newsletter.subject}" with ${newsletter.story_count} stories`)
+    } catch (error: any) {
+      logger.error('Newsletter generation cron failed:', error.message)
+    }
+  })
+
+  // ── COMPETITOR AD RESEARCH: Monthly 1st 9AM ──────────────────
+  cron.schedule('0 9 1 * *', async () => {
+    try {
+      logger.info('Running monthly competitor ad research...')
+      const result = await runCompetitorAdResearch()
+      logger.info(`Competitor research: ${result.competitors_analyzed} analyzed, ${result.concepts_generated} concepts generated`)
+    } catch (error: any) {
+      logger.error('Competitor ad research cron failed:', error.message)
+    }
+  })
+
+  // ── SEO CONTENT FACTORY: Twice weekly (Tue/Thu 6AM) ──────────
+  cron.schedule('0 6 * * 2,4', async () => {
+    try {
+      logger.info('Running SEO content factory batch...')
+      const result = await generateBatchContent()
+      logger.info(`SEO batch complete: ${result.generated} articles generated from ${result.keywords.length} keywords`)
+    } catch (error: any) {
+      logger.error('SEO content factory cron failed:', error.message)
+    }
+  })
+
+  // ── ADVANCED SEO RESEARCH: Weekly Wednesday 5AM ──────────────
+  cron.schedule('0 5 * * 3', async () => {
+    try {
+      logger.info('Running advanced SEO research pipeline...')
+      const keywords = [
+        'best safari experiences Zimbabwe',
+        'Victoria Falls adventure guide',
+        'Hwange National Park safari tips'
+      ]
+      const keyword = keywords[Math.floor(Math.random() * keywords.length)]
+      const result = await runSEOResearchPipeline(keyword)
+      logger.info(`SEO research complete for "${keyword}": article "${result.article.title}"`)
+    } catch (error: any) {
+      logger.error('Advanced SEO research cron failed:', error.message)
+    }
+  })
+
+  logger.info('All cron jobs scheduled (All 4 Tiers — 34+ agents)')
 }
