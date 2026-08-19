@@ -245,6 +245,12 @@ export async function fetchFromSafariZetu(resource: string, params: Record<strin
 }
 
 export async function sendEmail(to: string, subject: string, html: string): Promise<string> {
+  // Safety: PUBLIC_ACTIONS_ENABLED=false blocks ALL outgoing emails
+  if (process.env.PUBLIC_ACTIONS_ENABLED === 'false') {
+    logger.warn(`Email blocked: PUBLIC_ACTIONS_ENABLED=false. To: ${to}, Subject: ${subject}`)
+    return 'blocked-safety-flag'
+  }
+
   // Email test mode: route all emails to test address
   const testMode = process.env.EMAIL_TEST_MODE === 'true'
   const testOverride = process.env.EMAIL_TEST_OVERRIDE || process.env.TEST_EMAIL || 'sirmarshalmuvhuni@gmail.com'
