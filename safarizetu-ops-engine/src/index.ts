@@ -1196,7 +1196,7 @@ ${memorySnippet}${complaintSnippet}`
     }
 
     // ── ADMIN PANEL ─────────────────────────────────────────────
-    // GET /admin — serve admin HTML
+    // GET /admin — serve admin HTML with ALL 29 agents
     if (req.url === '/admin' || req.url === '/admin/') {
       const adminHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -1210,172 +1210,125 @@ ${memorySnippet}${complaintSnippet}`
     .header h1{font-size:18px;color:#2D4231}.header .status{font-size:12px;color:#666}
     .header a{color:#B37038;text-decoration:none;font-size:13px;margin-left:16px}
     .container{max-width:1200px;margin:0 auto;padding:24px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px}
-    .card{background:#111;border:1px solid #222;border-radius:8px;padding:20px}
-    .card h3{font-size:14px;color:#B37038;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px}
-    .card p{font-size:12px;color:#888;margin-bottom:12px}
-    .btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s}
-    .btn-primary{background:#2D4231;color:#fff}.btn-primary:hover{background:#3a5a3f}
-    .btn-gold{background:#B37038;color:#fff}.btn-gold:hover{background:#c9803f}
-    .btn-danger{background:#8b2500;color:#fff}.btn-danger:hover{background:#a33000}
-    .btn-sm{padding:6px 12px;font-size:11px}
-    .btn:disabled{opacity:0.5;cursor:not-allowed}
+    .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+    .card{background:#111;border:1px solid #222;border-radius:8px;padding:16px}
     .metric{text-align:center;padding:12px}.metric .value{font-size:28px;font-weight:700;color:#2D4231}
     .metric .label{font-size:10px;color:#888;margin-top:4px;text-transform:uppercase}
-    .log{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:12px;max-height:500px;overflow-y:auto;font-family:'Fira Code',monospace;font-size:11px;line-height:1.6}
-    .log-entry{border-bottom:1px solid #1a1a1a;padding:6px 0}.log-entry:last-child{border:none}
-    .log-time{color:#555}.log-agent{color:#B37038;font-weight:600}.log-status{padding:2px 6px;border-radius:3px;font-size:10px}
-    .log-status.success{background:#1a3a1a;color:#4ade80}.log-status.running{background:#1a2a3a;color:#60a5fa}
-    .log-status.failed{background:#3a1a1a;color:#f87171}
-    .tabs{display:flex;gap:4px;margin-bottom:16px}.tab{padding:8px 16px;background:#111;border:1px solid #222;border-radius:6px;cursor:pointer;font-size:13px;color:#888}
-    .tab.active{background:#2D4231;color:#fff;border-color:#2D4231}
-    .result-box{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:16px;margin-top:12px;white-space:pre-wrap;font-size:12px;line-height:1.5;max-height:400px;overflow-y:auto;display:none}
-    .result-box.visible{display:block}
-    .spinner{display:inline-block;width:14px;height:14px;border:2px solid #333;border-top-color:#B37038;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .template-card{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:8px;padding:16px;margin-bottom:12px;transition:border-color 0.2s}
+    .btn{padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s}
+    .btn-primary{background:#2D4231;color:#fff}.btn-primary:hover{background:#3a5a3f}
+    .btn-gold{background:#B37038;color:#fff}.btn-gold:hover{background:#c9803f}
+    .btn-danger{background:#8b2500;color:#fff}.btn-sm{padding:5px 10px;font-size:11px}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+    .section{margin-bottom:32px}
+    .section-title{font-size:15px;font-weight:600;color:#e0e0e0;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #222;display:flex;align-items:center;gap:8px}
+    .section-title .count{background:#2D4231;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+    .template-card{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:8px;padding:14px;margin-bottom:10px;transition:border-color 0.2s}
     .template-card:hover{border-color:#2D4231}
-    .template-num{display:inline-block;width:28px;height:28px;line-height:28px;text-align:center;background:#2D4231;color:#fff;border-radius:50%;font-size:12px;font-weight:700;margin-right:8px}
-    .template-name{font-size:15px;font-weight:600;color:#e0e0e0}
-    .template-desc{font-size:12px;color:#888;margin:8px 0}
-    .template-steps{font-size:11px;color:#666;margin:8px 0;padding:8px;background:#111;border-radius:4px}
+    .template-num{display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;background:#2D4231;color:#fff;border-radius:50%;font-size:11px;font-weight:700;margin-right:8px}
+    .template-name{font-size:14px;font-weight:600;color:#e0e0e0}
+    .template-desc{font-size:11px;color:#888;margin:6px 0}
+    .template-steps{font-size:10px;color:#666;margin:6px 0;padding:6px;background:#111;border-radius:4px}
     .template-steps code{color:#B37038}
-    .template-actions{display:flex;gap:8px;margin-top:10px;align-items:center}
-    .template-tag{display:inline-block;padding:2px 8px;background:#1a2a1a;color:#4ade80;border-radius:4px;font-size:10px;font-weight:600}
-    .section-title{font-size:16px;font-weight:600;color:#e0e0e0;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid #222}
+    .template-actions{display:flex;gap:8px;margin-top:8px;align-items:center}
+    .template-tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600}
+    .tag-content{background:#1a2a1a;color:#4ade80}.tag-seo{background:#1a1a3a;color:#60a5fa}
+    .tag-intel{background:#3a1a1a;color:#f87171}.tag-ops{background:#2a2a1a;color:#fbbf24}
+    .tag-growth{background:#1a3a2a;color:#34d399}.tag-revenue{background:#3a2a1a;color:#fb923c}
+    .agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+    .agent-item{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;transition:border-color 0.2s}
+    .agent-item:hover{border-color:#2D4231}
+    .agent-label{font-size:12px;font-weight:600}.agent-desc{font-size:10px;color:#666}
+    .tabs{display:flex;gap:4px;margin-bottom:16px}.tab{padding:7px 14px;background:#111;border:1px solid #222;border-radius:6px;cursor:pointer;font-size:12px;color:#888}
+    .tab.active{background:#2D4231;color:#fff;border-color:#2D4231}
+    .log{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:12px;max-height:500px;overflow-y:auto;font-family:'Fira Code',monospace;font-size:11px;line-height:1.6}
+    .log-entry{border-bottom:1px solid #1a1a1a;padding:5px 0}.log-entry:last-child{border:none}
+    .log-time{color:#555}.log-agent{color:#B37038;font-weight:600}
+    .log-status{padding:2px 6px;border-radius:3px;font-size:10px}
+    .log-status.success{background:#1a3a1a;color:#4ade80}.log-status.running{background:#1a2a3a;color:#60a5fa}.log-status.failed{background:#3a1a1a;color:#f87171}
+    .result-box{background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:14px;margin-top:12px;white-space:pre-wrap;font-size:11px;line-height:1.5;max-height:400px;overflow-y:auto;display:none}
+    .result-box.visible{display:block}
+    .spinner{display:inline-block;width:12px;height:12px;border:2px solid #333;border-top-color:#B37038;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
   <div class="header">
     <div style="display:flex;align-items:center;gap:12px">
       <h1>SafariZetu Ops Engine</h1>
-      <a href="/" target="_blank">Dashboard</a>
-      <a href="/health" target="_blank">Health</a>
+      <a href="/">Dashboard</a><a href="/health">Health</a><a href="/metrics">Metrics</a>
     </div>
     <div class="status" id="status">Connecting...</div>
   </div>
   <div class="container">
-    <div class="grid" id="metrics"></div>
+    <div class="metrics" id="metrics"></div>
 
-    <div class="section-title">n8n Marketing Agent Templates (Native TypeScript)</div>
-    <p style="font-size:12px;color:#666;margin-bottom:16px">These 6 templates were converted from n8n workflows to native TypeScript agents. No n8n required — they run directly in the OpsEngine.</p>
+    <div class="section">
+      <div class="section-title">n8n Marketing Templates (Native TypeScript) <span class="count">6</span></div>
+      <div id="n8n-templates"></div>
+    </div>
 
-    <div id="templates-container"></div>
+    <div class="section">
+      <div class="section-title">OpsEngine Original Agents <span class="count">23</span></div>
+      <div class="agent-grid" id="original-agents"></div>
+    </div>
 
-    <div class="tabs" style="margin-top:24px">
+    <div class="tabs" style="margin-top:20px">
       <div class="tab active" data-tab="runs">Run History</div>
       <div class="tab" data-tab="approvals">Approvals</div>
     </div>
-    <div id="panel-runs">
-      <div class="log" id="runs-log"><div style="color:#555;padding:20px;text-align:center">No runs yet. Click "Run Now" on any template above.</div></div>
-    </div>
-    <div id="panel-approvals" style="display:none">
-      <div class="log" id="approvals-log"></div>
-      <div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="approveAll()">Approve All Pending</button></div>
-    </div>
-
+    <div id="panel-runs"><div class="log" id="runs-log"><div style="color:#555;padding:20px;text-align:center">No runs yet. Click "Run" on any agent.</div></div></div>
+    <div id="panel-approvals" style="display:none"><div class="log" id="approvals-log"></div><div style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="approveAll()">Approve All</button></div></div>
     <div class="result-box" id="agent-result"></div>
   </div>
   <script>
     const API = window.location.origin;
-
-    const templates = [
-      {
-        num: '01',
-        name: 'Newsletter Machine',
-        agent: 'newsletter-agent',
-        cron: 'Daily 7AM',
-        desc: 'Generates a 3-5 story newsletter draft from safari/travel RSS feeds and APIs. Curates top stories, writes engaging copy, and formats for email delivery.',
-        steps: ['Fetch RSS/API sources (safari news, travel blogs)', 'AI selects top 3-5 stories by relevance', 'Generate newsletter HTML with subject lines', 'Store draft for approval before sending'],
-        tag: 'Content Creation'
-      },
-      {
-        num: '02',
-        name: 'Viral Content Multiplier',
-        agent: 'social-content',
-        cron: 'Thu 2AM',
-        desc: 'Takes one piece of content and repurposes it into platform-specific posts: Instagram captions, Facebook posts, TikTok scripts, Pinterest descriptions, and Twitter threads.',
-        steps: ['Receive source content (blog, video, photo set)', 'Analyze content themes and hooks', 'Generate platform-specific formats', 'Create posting calendar with optimal times'],
-        tag: 'Content Repurposing'
-      },
-      {
-        num: '03',
-        name: 'Competitor Ad Research & Adaptation',
-        agent: 'competitor-ad-agent',
-        cron: 'Monthly 1st 9AM',
-        desc: 'Analyzes competitor advertising strategies, extracts winning patterns, and generates original ad concepts that avoid copying while capturing proven angles.',
-        steps: ['Scan competitor ad libraries (Facebook, Google)', 'Extract winning hooks, angles, formats', 'Generate 5+ original ad concepts', 'Create A/B test matrix for each concept'],
-        tag: 'Competitive Intelligence'
-      },
-      {
-        num: '04',
-        name: 'SEO Content Factory',
-        agent: 'seo-content-factory',
-        cron: 'Tue/Thu 6AM',
-        desc: 'End-to-end SEO content pipeline: keyword research → content brief → article writing → humanization. Produces publication-ready articles.',
-        steps: ['Research keyword clusters and search intent', 'Generate content brief with target word count', 'Write 1500-2500 word article', 'Humanize text to pass AI detection', 'Format for CMS publication'],
-        tag: 'SEO'
-      },
-      {
-        num: '05',
-        name: 'Telegram Multi-Agent Orchestrator',
-        agent: 'telegram-orchestrator',
-        cron: 'On-demand',
-        desc: 'Routes Telegram commands to 9 specialist agents: email, creative, posting, research, web, bookings, content, analytics, and partners. Logs all actions.',
-        steps: ['Parse incoming Telegram command', 'Route to appropriate specialist agent', 'Execute action (research, draft, schedule)', 'Log result and respond to user'],
-        tag: 'Orchestration'
-      },
-      {
-        num: '06',
-        name: 'Advanced SEO Research-to-Docs',
-        agent: 'seo-research-agent',
-        cron: 'Weekly Wed 5AM',
-        desc: 'Deep SEO pipeline: Google Search research → competitor analysis → content brief → article draft → humanization → Google Docs delivery.',
-        steps: ['Google Search for target keyword', 'Scrape top 10 results for patterns', 'Generate content brief from analysis', 'Write article matching search intent', 'Humanize and format for Google Docs'],
-        tag: 'SEO Research'
-      }
+    const n8n = [
+      {num:'01',name:'Newsletter Machine',agent:'newsletter-agent',cron:'Daily 7AM',desc:'3-5 story newsletter from safari/travel RSS feeds. AI curates, writes, formats.',steps:['Fetch RSS/API sources','AI selects top stories','Generate newsletter HTML','Store draft for approval'],tag:'Content',tagClass:'tag-content'},
+      {num:'02',name:'Viral Content Multiplier',agent:'social-content',cron:'Thu 2AM',desc:'Repurposes content into Instagram, Facebook, TikTok, Pinterest, Twitter posts.',steps:['Receive source content','Analyze themes and hooks','Generate platform formats','Create posting calendar'],tag:'Content',tagClass:'tag-content'},
+      {num:'03',name:'Competitor Ad Research',agent:'competitor-ad-agent',cron:'Monthly 1st',desc:'Analyzes competitor ads, extracts winning patterns, generates original concepts.',steps:['Scan competitor ad libraries','Extract winning hooks/formats','Generate 5+ original concepts','Create A/B test matrix'],tag:'Intel',tagClass:'tag-intel'},
+      {num:'04',name:'SEO Content Factory',agent:'seo-content-factory',cron:'Tue/Thu 6AM',desc:'Keyword research -> brief -> article -> humanize. Publication-ready SEO content.',steps:['Research keyword clusters','Generate content brief','Write 1500-2500 word article','Humanize to pass AI detection'],tag:'SEO',tagClass:'tag-seo'},
+      {num:'05',name:'Telegram Orchestrator',agent:'telegram-orchestrator',cron:'On-demand',desc:'Routes Telegram commands to 9 specialist agents. Logs all actions.',steps:['Parse Telegram command','Route to specialist agent','Execute action','Log and respond'],tag:'Ops',tagClass:'tag-ops'},
+      {num:'06',name:'Advanced SEO Research',agent:'seo-research-agent',cron:'Weekly Wed',desc:'Deep SEO: Google Search -> competitor analysis -> brief -> article -> Docs.',steps:['Google Search research','Scrape top 10 results','Generate content brief','Write and humanize article'],tag:'SEO',tagClass:'tag-seo'},
     ];
-
-    const additionalAgents = [
-      { name: 'division1-growth', label: 'Growth Division', desc: 'SEO content + operator activation emails', cron: 'Daily' },
-      { name: 'division3-partnerships', label: 'Partnerships', desc: 'Research + outreach to tour operators', cron: 'Sun 6PM' },
-      { name: 'market-researcher', label: 'Market Research', desc: 'Quarterly deep market analysis', cron: 'Quarterly' },
-      { name: 'sentiment-tracker', label: 'Sentiment Tracker', desc: 'Monitor brand sentiment across platforms', cron: 'Daily' },
-      { name: 'security-monitor', label: 'Security Monitor', desc: 'Threat scanning + vulnerability checks', cron: 'Hourly' },
-      { name: 'billing-agent', label: 'Billing Agent', desc: 'Usage tracking + invoice generation', cron: 'Daily + Monthly' },
-      { name: 'operator-scorer', label: 'Operator Scorer', desc: 'Rate operators on quality, sustainability', cron: 'Monthly 1st' },
-      { name: 'revenue-splitter', label: 'Revenue Splitter', desc: 'Calculate revenue splits across partners', cron: 'Monthly 1st' },
-      { name: 'contract-generator', label: 'Contract Generator', desc: 'Auto-generate partnership contracts', cron: 'Webhook' },
-      { name: 'doc-generator', label: 'Document Generator', desc: 'Weekly ops docs + reports', cron: 'Daily 3AM' },
-      { name: 'sales-prospector', label: 'Sales Prospector', desc: 'Cold outreach with NeverBounce verification', cron: 'Mon 1AM' },
-      { name: 'influencer-manager', label: 'Influencer Outreach', desc: 'Find and reach out to travel influencers', cron: 'Fri 9AM' },
+    const originals = [
+      {name:'booking-bot',label:'Booking Bot',desc:'Handles incoming booking enquiries, generates quotes',cron:'Real-time',cat:'ops'},
+      {name:'billing-agent',label:'Billing Agent',desc:'Usage tracking, invoice generation, payment reminders',cron:'Daily + Monthly',cat:'revenue'},
+      {name:'contract-generator',label:'Contract Generator',desc:'Auto-generates partnership contracts with legal terms',cron:'Webhook',cat:'ops'},
+      {name:'doc-generator',label:'Document Generator',desc:'Weekly ops docs, user guides, changelogs, FAQs',cron:'Daily 3AM',cat:'ops'},
+      {name:'division1-growth',label:'Growth Division',desc:'SEO content creation + operator activation emails',cron:'Daily',cat:'growth'},
+      {name:'division3-partnerships',label:'Partnerships Division',desc:'Research + outreach to tour operators and lodges',cron:'Sun 6PM',cat:'growth'},
+      {name:'division4-feedback',label:'Feedback Division',desc:'Triage customer feedback, generate code fixes, notify founder',cron:'On-demand',cat:'ops'},
+      {name:'sales-prospector',label:'Sales Prospector',desc:'Apollo.io lead gen, NeverBounce verify, cold outreach',cron:'Mon 1AM',cat:'growth'},
+      {name:'influencer-manager',label:'Influencer Outreach',desc:'Find, vet, and reach out to travel influencers',cron:'Fri 9AM',cat:'growth'},
+      {name:'social-content',label:'Social Content',desc:'Content calendar for Instagram, Facebook, TikTok, Pinterest',cron:'Thu 2AM',cat:'content'},
+      {name:'sentiment-tracker',label:'Sentiment Tracker',desc:'Monitor brand sentiment, detect alerts, suggest responses',cron:'Daily',cat:'intel'},
+      {name:'market-researcher',label:'Market Researcher',desc:'Quarterly deep market analysis and competitor reports',cron:'Quarterly',cat:'intel'},
+      {name:'dynamic-pricing',label:'Dynamic Pricing',desc:'Monitor competitor prices, generate pricing recommendations',cron:'Daily',cat:'revenue'},
+      {name:'revenue-analytics',label:'Revenue Analytics',desc:'Weekly revenue reports and key metric calculations',cron:'Mon',cat:'revenue'},
+      {name:'revenue-splitter',label:'Revenue Splitter',desc:'Calculate partner payouts and detect anomalies',cron:'Monthly 1st',cat:'revenue'},
+      {name:'operator-scorer',label:'Operator Scorer',desc:'Rate operators on quality, sustainability, value',cron:'Monthly 1st',cat:'ops'},
+      {name:'inventory-manager',label:'Inventory Manager',desc:'Track safari availability, predict demand, detect shortages',cron:'Daily',cat:'ops'},
+      {name:'onboarding-flow',label:'Onboarding Flow',desc:'New operator onboarding sequences and nudges',cron:'On-demand',cat:'ops'},
+      {name:'chatbot-trainer',label:'Chatbot Trainer',desc:'Analyze failed conversations, generate training data',cron:'Weekly',cat:'ops'},
+      {name:'security-monitor',label:'Security Monitor',desc:'Threat scanning, rate limiting, IP blocking',cron:'Hourly',cat:'ops'},
+      {name:'feature-flags',label:'Feature Flags',desc:'Manage feature toggles and A/B experiments',cron:'On-demand',cat:'ops'},
+      {name:'localizer',label:'Localizer',desc:'Translate content for different markets and cultures',cron:'Weekly',cat:'content'},
+      {name:'sustainability-tracker',label:'Sustainability Tracker',desc:'ESG scoring, sustainability reports, improvement recs',cron:'Quarterly',cat:'ops'},
+      {name:'browser-test',label:'Browser Test',desc:'Automated browser testing for web features',cron:'On-demand',cat:'ops'},
     ];
+    const catColors = {ops:'tag-ops',growth:'tag-growth',revenue:'tag-revenue',content:'tag-content',intel:'tag-intel'};
 
-    // Render templates
-    const container = document.getElementById('templates-container');
-    templates.forEach(t => {
-      container.innerHTML += '<div class="template-card" id="tmpl-'+t.agent+'">'+
-        '<div><span class="template-num">'+t.num+'</span><span class="template-name">'+t.name+'</span> <span class="template-tag">'+t.tag+'</span></div>'+
-        '<div class="template-desc">'+t.desc+'</div>'+
-        '<div class="template-steps"><strong>Workflow:</strong> '+t.steps.map((s,i) => '<code>'+(i+1)+'</code> '+s).join(' → ')+'</div>'+
-        '<div class="template-actions">'+
-          '<button class="btn btn-gold btn-sm" onclick="triggerAgent(this,\''+t.agent+'\')">Run Now</button>'+
-          '<span style="font-size:11px;color:#555">Cron: '+t.cron+'</span>'+
-        '</div>'+
-      '</div>';
+    // Render n8n templates
+    const n8nC = document.getElementById('n8n-templates');
+    n8n.forEach(t => {
+      n8nC.innerHTML += '<div class="template-card"><div><span class="template-num">'+t.num+'</span><span class="template-name">'+t.name+'</span> <span class="template-tag '+t.tagClass+'">'+t.tag+'</span></div><div class="template-desc">'+t.desc+'</div><div class="template-steps"><strong>Steps:</strong> '+t.steps.map((s,i) => '<code>'+(i+1)+'</code> '+s).join(' &rarr; ')+'</div><div class="template-actions"><button class="btn btn-gold btn-sm" onclick="triggerAgent(this,\''+t.agent+'\')">Run Now</button><span style="font-size:10px;color:#555">'+t.cron+'</span></div></div>';
     });
 
-    // Additional agents section
-    container.innerHTML += '<div class="section-title" style="margin-top:32px">Additional Agents</div>';
-    let addHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">';
-    additionalAgents.forEach(a => {
-      addHtml += '<div style="background:#0d0d0d;border:1px solid #1a1a1a;border-radius:6px;padding:12px;display:flex;justify-content:space-between;align-items:center">'+
-        '<div><div style="font-size:13px;font-weight:600">'+a.label+'</div><div style="font-size:11px;color:#666">'+a.desc+' | '+a.cron+'</div></div>'+
-        '<button class="btn btn-gold btn-sm" onclick="triggerAgent(this,\''+a.name+'\')">Run</button>'+
-      '</div>';
+    // Render original agents
+    const oC = document.getElementById('original-agents');
+    originals.forEach(a => {
+      oC.innerHTML += '<div class="agent-item"><div><div class="agent-label">'+a.label+'</div><div class="agent-desc">'+a.desc+' | '+a.cron+'</div></div><button class="btn btn-gold btn-sm" onclick="triggerAgent(this,\''+a.name+'\')">Run</button></div>';
     });
-    addHtml += '</div>';
-    container.innerHTML += addHtml;
 
     // Tab switching
     document.querySelectorAll('.tab').forEach(t => {
@@ -1390,21 +1343,15 @@ ${memorySnippet}${complaintSnippet}`
     });
 
     async function triggerAgent(btn, name) {
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span>Running...';
-      const resultBox = document.getElementById('agent-result');
-      resultBox.className = 'result-box visible';
-      resultBox.textContent = 'Triggering '+name+'... Check Run History tab for progress.';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+      const rb = document.getElementById('agent-result');
+      rb.className = 'result-box visible'; rb.textContent = 'Running '+name+'...';
       try {
-        const res = await fetch(API+'/api/admin/trigger/'+name, {method:'POST', signal: AbortSignal.timeout(120000)});
+        const res = await fetch(API+'/api/admin/trigger/'+name, {method:'POST', signal:AbortSignal.timeout(120000)});
         const data = await res.json();
-        resultBox.textContent = JSON.stringify(data, null, 2);
-        btn.innerHTML = 'Run Again';
+        rb.textContent = JSON.stringify(data, null, 2); btn.innerHTML = 'Run Again';
         loadRuns();
-      } catch(e) {
-        resultBox.textContent = 'Error: '+e.message+'\\nAgent may still be running — check Run History.';
-        btn.innerHTML = 'Retry';
-      }
+      } catch(e) { rb.textContent = 'Error: '+e.message; btn.innerHTML = 'Retry'; }
       btn.disabled = false;
     }
 
@@ -1413,14 +1360,9 @@ ${memorySnippet}${complaintSnippet}`
       try {
         const res = await fetch(API+'/api/admin/runs');
         const data = await res.json();
-        if(!data.runs || data.runs.length === 0) {
-          log.innerHTML = '<div style="color:#555;padding:20px;text-align:center">No runs yet. Click "Run Now" on any template above.</div>';
-          return;
-        }
-        log.innerHTML = data.runs.map(r =>
-          '<div class="log-entry"><span class="log-time">'+new Date(r.started_at).toLocaleString()+'</span> <span class="log-agent">'+r.agent_name+'</span> <span class="log-status '+(r.status||'running')+'">'+(r.status||'running')+'</span>'+(r.result_summary?' <span style="color:#666">'+r.result_summary.substring(0,120)+'</span>':'')+'</div>'
-        ).join('');
-      } catch(e) { log.innerHTML = '<div style="color:#f87171">Error loading runs</div>'; }
+        if(!data.runs||data.runs.length===0){log.innerHTML='<div style="color:#555;padding:20px;text-align:center">No runs yet.</div>';return;}
+        log.innerHTML = data.runs.map(r => '<div class="log-entry"><span class="log-time">'+new Date(r.started_at).toLocaleString()+'</span> <span class="log-agent">'+r.agent_name+'</span> <span class="log-status '+(r.status||'running')+'">'+(r.status||'running')+'</span>'+(r.result_summary?' <span style="color:#666">'+r.result_summary.substring(0,100)+'</span>':'')+'</div>').join('');
+      } catch(e) { log.innerHTML='<div style="color:#f87171">Error</div>'; }
     }
 
     async function loadApprovals() {
@@ -1428,49 +1370,20 @@ ${memorySnippet}${complaintSnippet}`
       try {
         const res = await fetch(API+'/api/approval/pending');
         const data = await res.json();
-        if(!data.items || data.items.length === 0) {
-          log.innerHTML = '<div style="color:#555;padding:20px;text-align:center">No pending approvals.</div>';
-          return;
-        }
-        log.innerHTML = data.items.map(i =>
-          '<div class="log-entry"><span class="log-agent">'+i.item_type+'</span> <span style="color:#666">'+(i.title||i.content||'').substring(0,100)+'</span> <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="approveItem(this,\\''+i.id+'\\')">Approve</button> <button class="btn btn-danger btn-sm" onclick="rejectItem(this,\\''+i.id+'\\')">Reject</button></div>'
-        ).join('');
-      } catch(e) { log.innerHTML = '<div style="color:#f87171">Error loading approvals</div>'; }
+        if(!data.items||data.items.length===0){log.innerHTML='<div style="color:#555;padding:20px;text-align:center">No pending approvals.</div>';return;}
+        log.innerHTML = data.items.map(i => '<div class="log-entry"><span class="log-agent">'+i.item_type+'</span> <span style="color:#666">'+(i.title||i.content||'').substring(0,100)+'</span> <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="approveItem(this,\\''+i.id+'\\')">Approve</button> <button class="btn btn-danger btn-sm" onclick="rejectItem(this,\\''+i.id+'\\')">Reject</button></div>').join('');
+      } catch(e) { log.innerHTML='<div style="color:#f87171">Error</div>'; }
     }
 
-    async function approveItem(btn, id) {
-      btn.disabled = true; btn.textContent = '...';
-      await fetch(API+'/api/approval/approve/'+id, {method:'POST'});
-      btn.parentElement.remove();
-    }
-    async function rejectItem(btn, id) {
-      btn.disabled = true; btn.textContent = '...';
-      await fetch(API+'/api/approval/reject/'+id, {method:'POST'});
-      btn.parentElement.remove();
-    }
-    async function approveAll() {
-      await fetch(API+'/api/approval/approve-all', {method:'POST'});
-      loadApprovals();
-    }
+    async function approveItem(btn,id){btn.disabled=true;btn.textContent='...';await fetch(API+'/api/approval/approve/'+id,{method:'POST'});btn.parentElement.remove();}
+    async function rejectItem(btn,id){btn.disabled=true;btn.textContent='...';await fetch(API+'/api/approval/reject/'+id,{method:'POST'});btn.parentElement.remove();}
+    async function approveAll(){await fetch(API+'/api/approval/approve-all',{method:'POST'});loadApprovals();}
 
     async function loadMetrics() {
-      try {
-        const res = await fetch(API+'/health');
-        const data = await res.json();
-        document.getElementById('status').textContent = 'DB: '+(data.db||'mock')+' | Langfuse: '+(data.langfuse||'off');
-      } catch(e) { document.getElementById('status').textContent = 'Offline'; }
-      try {
-        const res = await fetch(API+'/metrics');
-        const data = await res.json();
-        document.getElementById('metrics').innerHTML =
-          '<div class="card metric"><div class="value">'+(data.total_runs||data.total_traces||0)+'</div><div class="label">Total Runs</div></div>'+
-          '<div class="card metric"><div class="value">'+(data.total_tokens||0)+'</div><div class="label">Tokens Used</div></div>'+
-          '<div class="card metric"><div class="value">$'+(data.total_cost_usd||0).toFixed(2)+'</div><div class="label">Total Cost</div></div>'+
-          '<div class="card metric"><div class="value">'+(data.avg_latency_ms||0)+'</div><div class="label">Avg Latency (ms)</div></div>';
-      } catch(e) {}
+      try{const r=await fetch(API+'/health');const d=await r.json();document.getElementById('status').textContent='DB: '+(d.db||'mock')+' | Langfuse: '+(d.langfuse||'off');}catch(e){document.getElementById('status').textContent='Offline';}
+      try{const r=await fetch(API+'/metrics');const d=await r.json();document.getElementById('metrics').innerHTML='<div class="card metric"><div class="value">'+(d.total_runs||d.total_traces||0)+'</div><div class="label">Runs</div></div><div class="card metric"><div class="value">'+(d.total_tokens||0)+'</div><div class="label">Tokens</div></div><div class="card metric"><div class="value">$'+(d.total_cost_usd||0).toFixed(2)+'</div><div class="label">Cost</div></div><div class="card metric"><div class="value">'+(d.avg_latency_ms||0)+'</div><div class="label">Latency ms</div></div>';}catch(e){}
     }
-    loadMetrics();
-    setInterval(loadMetrics, 15000);
+    loadMetrics(); setInterval(loadMetrics,15000);
   </script>
 </body>
 </html>`;
@@ -1596,6 +1509,61 @@ ${memorySnippet}${complaintSnippet}`
           case 'doc-generator': {
             const { generateAllDocs } = await import('./agents/doc-generator')
             result = await generateAllDocs()
+            break
+          }
+          case 'booking-bot': {
+            const { handleIncomingMessage } = await import('./agents/booking-bot')
+            result = await handleIncomingMessage({ conversation_id: 'admin-test', platform: 'web', platform_user_id: 'admin', message: 'I want to book a Victoria Falls safari for 2 people in December' })
+            break
+          }
+          case 'chatbot-trainer': {
+            const { runWeeklyTraining } = await import('./agents/chatbot-trainer')
+            result = await runWeeklyTraining()
+            break
+          }
+          case 'division4-feedback': {
+            const { triageFeedback } = await import('./agents/division4-feedback')
+            result = await triageFeedback({ id: 'test-1', source: 'admin', title: 'Booking form confusing', body: 'The booking form was confusing to use', author_name: 'Admin Test' })
+            break
+          }
+          case 'dynamic-pricing': {
+            const { runDailyPricing } = await import('./agents/dynamic-pricing')
+            result = await runDailyPricing()
+            break
+          }
+          case 'feature-flags': {
+            const { generateFeatureFlagsReport } = await import('./agents/feature-flags')
+            result = await generateFeatureFlagsReport()
+            break
+          }
+          case 'inventory-manager': {
+            const { runDailyInventoryCheck } = await import('./agents/inventory-manager')
+            result = await runDailyInventoryCheck()
+            break
+          }
+          case 'localizer': {
+            const { runWeeklyLocalization } = await import('./agents/localizer')
+            result = await runWeeklyLocalization()
+            break
+          }
+          case 'onboarding-flow': {
+            const { sendOnboardingNudges } = await import('./agents/onboarding-flow')
+            result = await sendOnboardingNudges()
+            break
+          }
+          case 'revenue-analytics': {
+            const { sendWeeklyRevenueEmail } = await import('./agents/revenue-analytics')
+            await sendWeeklyRevenueEmail()
+            result = { status: 'completed', agent: 'revenue-analytics' }
+            break
+          }
+          case 'sustainability-tracker': {
+            const { runQuarterlySustainability } = await import('./agents/sustainability-tracker')
+            result = await runQuarterlySustainability()
+            break
+          }
+          case 'browser-test': {
+            result = { status: 'completed', message: 'Browser test agent — runs Playwright tests. Use npm test instead.' }
             break
           }
           default:
