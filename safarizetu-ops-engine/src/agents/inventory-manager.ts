@@ -1,12 +1,9 @@
-import { callAgent, logger, sendEmail } from '../services/ai-agent.service'
-import { queryCollection, upsertDocuments } from '../services/chroma.service'
+import { callAgent, pool, isDbConnected, logger, sendEmail } from '../services/ai-agent.service'
 import { startTrace, endTrace } from '../services/observability.service'
 import { wrapEmail, sectionHeader, bodyText } from '../services/email-templates'
 
 // ── INVENTORY MANAGEMENT AGENT ─────────────────────────────────
-// Skills: Browser-Use (scraping), PandasAI (analytics)
-// Tracks lodge availability, vehicle fleet, equipment, guide schedules
-// Predicts shortages and alerts operators
+// Queries PostgreSQL inventory_items, inventory_availability, inventory_alerts tables
 
 interface InventoryItem {
   id: string
@@ -36,8 +33,8 @@ interface InventoryAlert {
   severity: 'low' | 'medium' | 'high' | 'critical'
 }
 
-// ── SEED INVENTORY DATA ────────────────────────────────────────
-const DEFAULT_INVENTORY: InventoryItem[] = [
+// ── MOCK DATA ──────────────────────────────────────────────────
+const MOCK_INVENTORY: InventoryItem[] = [
   { id: 'lodge-1', item_type: 'lodge', name: 'Victoria Falls Lodge', location: 'Victoria Falls', capacity: 20, status: 'available', daily_rate: 350 },
   { id: 'lodge-2', item_type: 'lodge', name: 'Hwange Safari Camp', location: 'Hwange', capacity: 12, status: 'available', daily_rate: 280 },
   { id: 'lodge-3', item_type: 'lodge', name: 'Mana Pools Retreat', location: 'Mana Pools', capacity: 8, status: 'available', daily_rate: 400 },
@@ -56,26 +53,84 @@ export async function checkAvailability(
   date?: string,
   location?: string
 ): Promise<AvailabilitySlot[]> {
-  let items = DEFAULT_INVENTORY
+  let items: InventoryItem[] = []
 
+  if (isDbConnected()) {
+    try {
+      let query = 'SELECT * FROM inventory_items'
+      const conditions: string[] = []
+      const params: any[] = []
+
+      if (itemType) { params.push(itemType); conditions.push(`item_type = $${params.length}`) }
+      if (location) { params.push(`%${location}%`); conditions.push(`location ILIKE $${params.length}`) }
+
+      if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ')
+      query += ' ORDER BY created_at DESC'
+
+      const { rows } = await pool.query(query, params)
+      items = rows.map((r: any) => ({
+        id: r.id, item_type: r.item_type, name: r.name, description: r.description,
+        location: r.location, capacity: Number(r.capacity), status: r.status,
+        daily_rate: r.daily_rate ? Number(r.daily_rate) : undefined,
+        operating_cost: r.operating_cost ? Number(r.operating_cost) : undefined
+      }))
+    } catch (error: any) {
+      logger.error(`Failed to query inventory items: ${error.message}`)
+    }
+  }
+
+  if (items.length === 0) items = MOCK_INVENTORY
   if (itemType) items = items.filter(i => i.item_type === itemType)
   if (location) items = items.filter(i => i.location.toLowerCase().includes(location.toLowerCase()))
 
-  const slots: AvailabilitySlot[] = items.map(item => ({
-    item_id: item.id,
-    date: date || new Date().toISOString().split('T')[0],
-    available_count: item.status === 'available' ? item.capacity : 0,
-    booked_count: item.status === 'booked' ? item.capacity : 0,
-    blocked: item.status === 'maintenance'
-  }))
+  const targetDate = date || new Date().toISOString().split('T')[0]
 
-  // Store in Chroma for search
-  await upsertDocuments('inventory', slots.map(s => ({
-    id: s.item_id,
-    text: `${items.find(i => i.id === s.item_id)?.name || s.item_id}: ${s.available_count} available, ${s.booked_count} booked`,
-    metadata: { available: s.available_count, booked: s.booked_count, blocked: s.blocked }
-  })))
+  const slots: AvailabilitySlot[] = []
 
+  if (isDbConnected() && items.length > 0) {
+    try {
+      const itemIds = items.map(i => i.id)
+      const { rows: availRows } = await pool.query(
+        `SELECT * FROM inventory_availability WHERE item_id = ANY($1) AND date = $2`,
+        [itemIds, targetDate]
+      )
+
+      const availMap = new Map<string, any>()
+      for (const row of availRows) availMap.set(row.item_id, row)
+
+      for (const item of items) {
+        const avail = availMap.get(item.id)
+        if (avail) {
+          slots.push({
+            item_id: item.id, date: targetDate,
+            available_count: Number(avail.available_count),
+            booked_count: Number(avail.booked_count),
+            blocked: avail.blocked
+          })
+        } else {
+          slots.push({
+            item_id: item.id, date: targetDate,
+            available_count: item.status === 'available' ? item.capacity : 0,
+            booked_count: item.status === 'booked' ? item.capacity : 0,
+            blocked: item.status === 'maintenance'
+          })
+        }
+      }
+      return slots
+    } catch (error: any) {
+      logger.error(`Failed to query availability: ${error.message}`)
+    }
+  }
+
+  // Fallback for mock mode
+  for (const item of items) {
+    slots.push({
+      item_id: item.id, date: targetDate,
+      available_count: item.status === 'available' ? item.capacity : 0,
+      booked_count: item.status === 'booked' ? item.capacity : 0,
+      blocked: item.status === 'maintenance'
+    })
+  }
   return slots
 }
 
@@ -85,43 +140,52 @@ export async function detectShortages(
   location?: string
 ): Promise<InventoryAlert[]> {
   const slots = await checkAvailability(undefined, checkDate, location)
+  const allItems = MOCK_INVENTORY // needed for item lookup
   const alerts: InventoryAlert[] = []
 
   for (const slot of slots) {
-    const item = DEFAULT_INVENTORY.find(i => i.id === slot.item_id)
+    // Try to find item from DB or mock
+    let item: InventoryItem | undefined
+
+    if (isDbConnected()) {
+      try {
+        const { rows } = await pool.query(`SELECT * FROM inventory_items WHERE id = $1`, [slot.item_id])
+        if (rows.length > 0) {
+          item = { id: rows[0].id, item_type: rows[0].item_type, name: rows[0].name, location: rows[0].location, capacity: Number(rows[0].capacity), status: rows[0].status }
+        }
+      } catch { /* fall through */ }
+    }
+    if (!item) item = allItems.find(i => i.id === slot.item_id)
     if (!item) continue
 
-    // Low availability alert
     if (slot.available_count <= 2 && slot.available_count > 0) {
       alerts.push({
-        item_id: slot.item_id,
-        item_name: item.name,
-        alert_type: 'shortage',
+        item_id: slot.item_id, item_name: item.name, alert_type: 'shortage',
         message: `Only ${slot.available_count} ${item.item_type}(s) available at ${item.location} on ${checkDate}`,
         severity: slot.available_count === 1 ? 'high' : 'medium'
       })
     }
-
-    // Overbooking alert
     if (slot.booked_count > item.capacity) {
       alerts.push({
-        item_id: slot.item_id,
-        item_name: item.name,
-        alert_type: 'overbooking',
+        item_id: slot.item_id, item_name: item.name, alert_type: 'overbooking',
         message: `${item.name} is overbooked: ${slot.booked_count}/${item.capacity} capacity`,
         severity: 'critical'
       })
     }
+  }
 
-    // Maintenance due (simulated)
-    if (item.item_type === 'vehicle' && Math.random() > 0.9) {
-      alerts.push({
-        item_id: slot.item_id,
-        item_name: item.name,
-        alert_type: 'maintenance_due',
-        message: `${item.name} is due for scheduled maintenance`,
-        severity: 'medium'
-      })
+  // Persist alerts to DB
+  if (isDbConnected() && alerts.length > 0) {
+    try {
+      for (const alert of alerts) {
+        await pool.query(
+          `INSERT INTO inventory_alerts (item_id, alert_type, message, severity)
+           VALUES ($1, $2, $3, $4)`,
+          [alert.item_id, alert.alert_type, alert.message, alert.severity]
+        )
+      }
+    } catch (error: any) {
+      logger.error(`Failed to persist inventory alerts: ${error.message}`)
     }
   }
 
@@ -145,18 +209,10 @@ export async function predictDemand(
     systemPrompt: `You are a demand prediction agent for Safari Zetu.
 Predict booking demand for the next ${daysAhead} days for: ${safariType}
 
-Consider:
-- Seasonality (peak: Jun-Oct, shoulder: Mar-May, low: Nov-Feb)
-- Day of week patterns (weekends higher)
-- Holiday periods
-- Historical trends (assume 15% YoY growth)
-- External factors (school holidays, events)
+Consider seasonality (peak: Jun-Oct, shoulder: Mar-May, low: Nov-Feb), day of week patterns, holiday periods, and historical trends (assume 15% YoY growth).
 
 Return JSON: {
-  "predicted_bookings": number (total for period),
-  "peak_dates": ["date1", "date2"] (busiest 5 dates),
-  "recommended_inventory": number (units needed),
-  "confidence": number (0-100)
+  "predicted_bookings": number, "peak_dates": ["date1"], "recommended_inventory": number, "confidence": number
 }`,
     userMessage: `Predict demand for ${safariType} over next ${daysAhead} days`,
     triggerType: 'scheduled_weekly',
@@ -166,12 +222,7 @@ Return JSON: {
   try {
     return JSON.parse(result.content)
   } catch {
-    return {
-      predicted_bookings: Math.floor(Math.random() * 20) + 10,
-      peak_dates: [],
-      recommended_inventory: Math.floor(Math.random() * 5) + 3,
-      confidence: 65
-    }
+    return { predicted_bookings: 15, peak_dates: [], recommended_inventory: 4, confidence: 65 }
   }
 }
 
@@ -180,60 +231,57 @@ export async function generateInventoryReport(): Promise<string> {
   const slots = await checkAvailability()
   const alerts = await detectShortages(new Date().toISOString().split('T')[0])
 
+  let items: InventoryItem[] = MOCK_INVENTORY
+  if (isDbConnected()) {
+    try {
+      const { rows } = await pool.query(`SELECT * FROM inventory_items ORDER BY item_type, name`)
+      items = rows.map((r: any) => ({
+        id: r.id, item_type: r.item_type, name: r.name, description: r.description,
+        location: r.location, capacity: Number(r.capacity), status: r.status,
+        daily_rate: r.daily_rate ? Number(r.daily_rate) : undefined
+      }))
+    } catch { /* use mock */ }
+  }
+
   const byType = new Map<string, InventoryItem[]>()
-  for (const item of DEFAULT_INVENTORY) {
+  for (const item of items) {
     const existing = byType.get(item.item_type) || []
     existing.push(item)
     byType.set(item.item_type, existing)
   }
 
   let report = `📊 Inventory Report — ${new Date().toLocaleDateString()}\n\n`
-
-  for (const [type, items] of byType) {
-    const available = items.filter(i => i.status === 'available').length
-    const booked = items.filter(i => i.status === 'booked').length
-    const maintenance = items.filter(i => i.status === 'maintenance').length
-
-    report += `${type.toUpperCase()} (${items.length} total)\n`
+  for (const [type, typeItems] of byType) {
+    const available = typeItems.filter(i => i.status === 'available').length
+    const booked = typeItems.filter(i => i.status === 'booked').length
+    const maintenance = typeItems.filter(i => i.status === 'maintenance').length
+    report += `${type.toUpperCase()} (${typeItems.length} total)\n`
     report += `  Available: ${available} | Booked: ${booked} | Maintenance: ${maintenance}\n`
-    for (const item of items) {
+    for (const item of typeItems) {
       report += `  • ${item.name} @ ${item.location}: ${item.status} (${item.capacity} capacity)\n`
     }
     report += '\n'
   }
-
   if (alerts.length > 0) {
     report += `⚠️ ALERTS (${alerts.length})\n`
     for (const alert of alerts) {
       report += `  [${alert.severity.toUpperCase()}] ${alert.item_name}: ${alert.message}\n`
     }
   }
-
   return report
 }
 
 // ── SEND INVENTORY ALERTS ──────────────────────────────────────
 export async function sendInventoryAlerts(alerts: InventoryAlert[]): Promise<void> {
   if (alerts.length === 0) return
-
   const criticalAlerts = alerts.filter(a => a.severity === 'critical' || a.severity === 'high')
   if (criticalAlerts.length === 0) return
 
   const html = wrapEmail(
-    sectionHeader('Inventory Alerts', 'Safari Zetu') +
-    `
+    sectionHeader('Inventory Alerts', 'Safari Zetu') + `
     <p>Generated: ${new Date().toLocaleString()}</p>
-
     <h3>Critical/High Priority Alerts</h3>
-    <ul>
-      ${criticalAlerts.map(a => `
-        <li>
-          <strong>[${a.severity.toUpperCase()}]</strong> ${a.item_name}<br>
-          ${a.message}
-        </li>
-      `).join('')}
-    </ul>
-
+    <ul>${criticalAlerts.map(a => `<li><strong>[${a.severity.toUpperCase()}]</strong> ${a.item_name}<br>${a.message}</li>`).join('')}</ul>
     <p><em>Auto-generated by Safari Zetu Inventory Agent</em></p>`,
     { palette: 'midnight' }
   )
@@ -250,17 +298,14 @@ export async function runDailyInventoryCheck(): Promise<{
   alerts: number
 }> {
   const traceId = startTrace('daily_inventory', 'mimo-v2.5-free')
-
   const slots = await checkAvailability()
   const alerts = await detectShortages(new Date().toISOString().split('T')[0])
 
-  if (alerts.length > 0) {
-    await sendInventoryAlerts(alerts)
-  }
+  if (alerts.length > 0) await sendInventoryAlerts(alerts)
 
   endTrace(traceId, { input_tokens: 0, output_tokens: 0, cost_usd: 0, latency_ms: 0, status: 'success' })
-
   logger.info(`Inventory check: ${slots.length} items, ${alerts.length} alerts`)
+
   return {
     items_checked: slots.length,
     shortages: alerts.filter(a => a.alert_type === 'shortage').length,
