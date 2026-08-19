@@ -28,6 +28,20 @@ import { runSEOContentFactory, generateBatchContent } from '../agents/seo-conten
 import { callAgent } from '../services/ai-agent.service'
 import { AGENT_PROMPTS } from '../agents/prompts'
 
+async function isDuplicateRun(agentName: string): Promise<boolean> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*) as cnt FROM agent_run_log
+       WHERE agent_name = $1 AND started_at > NOW() - INTERVAL '5 minutes'`,
+      [agentName]
+    )
+    return parseInt(rows[0].cnt) > 0
+  } catch (err: any) {
+    logger.warn(`Idempotency check failed for ${agentName}: ${err.message} — proceeding`)
+    return false
+  }
+}
+
 export function startScheduler(): void {
   logger.info('Starting cron scheduler — All 4 Tiers (34 agents) included')
 
@@ -48,6 +62,7 @@ export function startScheduler(): void {
   // ── EVERY 15 MINUTES: Process incoming feedback ───────────
   cron.schedule('*/15 * * * *', async () => {
     try {
+      if (await isDuplicateRun('feedback_pipeline')) return
       await processPendingFeedback(5)  // Process up to 5 items per cycle
     } catch (error: any) {
       logger.error('Feedback processing failed:', error.message)
@@ -57,6 +72,7 @@ export function startScheduler(): void {
   // ── DAILY 9AM: Operator activation follow-ups ─────────────
   cron.schedule('0 9 * * *', async () => {
     try {
+      if (await isDuplicateRun('operator_activation')) return
       // Find operators due for day3 (registered 3 days ago, still pending)
       const { rows: day3Operators } = await pool.query(
         `SELECT * FROM operator_activation_queue
@@ -94,6 +110,7 @@ export function startScheduler(): void {
     ]
     const topic = topics[Math.floor(Math.random() * topics.length)]
     try {
+      if (await isDuplicateRun('seo_content')) return
       await generateSeoContent(topic.topic, topic.destination, topic.keywords)
     } catch (error: any) {
       logger.error('SEO content generation failed:', error.message)
@@ -103,6 +120,7 @@ export function startScheduler(): void {
   // ── MONDAY 7AM: Weekly intelligence report ────────────────
   cron.schedule('0 7 * * 1', async () => {
     try {
+      if (await isDuplicateRun('weekly_report')) return
       const { rows: [metrics] } = await pool.query(`
         SELECT
           COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as enquiries_this_week,
@@ -120,6 +138,7 @@ export function startScheduler(): void {
   // ── SUNDAY 6PM: Research unresearched partnerships + draft outreach ──
   cron.schedule('0 18 * * 0', async () => {
     try {
+      if (await isDuplicateRun('partnership_research')) return
       const { rows: partners } = await pool.query(
         `SELECT * FROM partnership_pipeline WHERE status = 'identified' LIMIT 3`
       )
@@ -149,6 +168,7 @@ export function startScheduler(): void {
   // ── TIER 1: DAILY 6AM — Sales Prospecting ─────────────────
   cron.schedule('0 6 * * *', async () => {
     try {
+      if (await isDuplicateRun('sales_prospector')) return
       logger.info('Running daily sales prospecting...')
       const result = await runDailyProspecting()
       logger.info(`Sales prospecting complete: ${result.total_leads} leads, ${result.outreach_sent} outreach sent`)
@@ -160,6 +180,7 @@ export function startScheduler(): void {
   // ── TIER 1: DAILY 7AM — Dynamic Pricing ──────────────────
   cron.schedule('0 7 * * *', async () => {
     try {
+      if (await isDuplicateRun('dynamic_pricing')) return
       logger.info('Running daily pricing analysis...')
       const result = await runDailyPricing()
       logger.info(`Pricing analysis complete: ${result.recommendations} recommendations, ${result.alerts} alerts`)
@@ -171,6 +192,7 @@ export function startScheduler(): void {
   // ── TIER 1: MONDAY 9AM — Weekly Revenue Email ────────────
   cron.schedule('0 9 * * 1', async () => {
     try {
+      if (await isDuplicateRun('revenue_email')) return
       logger.info('Sending weekly revenue email...')
       await sendWeeklyRevenueEmail()
       logger.info('Weekly revenue email sent')
@@ -192,6 +214,7 @@ export function startScheduler(): void {
   // ── TIER 2: DAILY 5AM — Inventory Check ──────────────────
   cron.schedule('0 5 * * *', async () => {
     try {
+      if (await isDuplicateRun('inventory_manager')) return
       logger.info('Running daily inventory check...')
       const result = await runDailyInventoryCheck()
       logger.info(`Inventory check: ${result.items_checked} items, ${result.alerts} alerts`)
@@ -203,6 +226,7 @@ export function startScheduler(): void {
   // ── TIER 2: DAILY 6:30AM — Sentiment Check ──────────────
   cron.schedule('30 6 * * *', async () => {
     try {
+      if (await isDuplicateRun('sentiment_tracker')) return
       logger.info('Running daily sentiment check...')
       const result = await runDailySentimentCheck()
       logger.info(`Sentiment check: ${result.reviews_analyzed} reviews, ${result.responses_needed} responses needed`)
@@ -214,6 +238,7 @@ export function startScheduler(): void {
   // ── TIER 2: DAILY 7:30AM — Onboarding Nudges ────────────
   cron.schedule('30 7 * * *', async () => {
     try {
+      if (await isDuplicateRun('onboarding_flow')) return
       logger.info('Sending onboarding nudges...')
       const result = await sendOnboardingNudges()
       logger.info(`Onboarding nudges: ${result.nudges_sent} sent`)
@@ -225,6 +250,7 @@ export function startScheduler(): void {
   // ── TIER 2: WEDNESDAY 8AM — Weekly Sentiment Report ──────
   cron.schedule('0 8 * * 3', async () => {
     try {
+      if (await isDuplicateRun('sentiment_report')) return
       logger.info('Sending weekly sentiment report...')
       await sendWeeklySentimentReport()
       logger.info('Weekly sentiment report sent')
@@ -236,6 +262,7 @@ export function startScheduler(): void {
   // ── TIER 2: 1ST OF MONTH 9AM — Content Calendar ─────────
   cron.schedule('0 9 1 * *', async () => {
     try {
+      if (await isDuplicateRun('social_content')) return
       logger.info('Generating monthly content calendar...')
       const result = await runMonthlyContentGeneration()
       logger.info(`Content calendar: ${result.posts_generated} posts across ${result.platforms.join(', ')}`)
@@ -247,6 +274,7 @@ export function startScheduler(): void {
   // ── TIER 2: 15TH OF MONTH 9AM — Operator Scoring ────────
   cron.schedule('0 9 15 * *', async () => {
     try {
+      if (await isDuplicateRun('operator_scorer')) return
       logger.info('Running monthly operator scoring...')
       const result = await runMonthlyScoring()
       logger.info(`Operator scoring: ${result.operators_scored} operators scored`)
@@ -258,6 +286,7 @@ export function startScheduler(): void {
   // ── TIER 3: EVERY HOUR — Security Check ──────────────────
   cron.schedule('0 * * * *', async () => {
     try {
+      if (await isDuplicateRun('security_monitor')) return
       logger.info('Running hourly security check...')
       const result = await runHourlySecurityCheck()
       logger.info(`Security check: ${result.events_analyzed} events, ${result.threats_detected} threats`)
@@ -269,6 +298,7 @@ export function startScheduler(): void {
   // ── TIER 3: TUESDAY 8PM — Chatbot Training ──────────────
   cron.schedule('0 20 * * 2', async () => {
     try {
+      if (await isDuplicateRun('chatbot_trainer')) return
       logger.info('Running weekly chatbot training...')
       const result = await runWeeklyTraining()
       logger.info(`Chatbot training: ${result.conversations_analyzed} conversations, ${result.new_training_examples} new examples`)
@@ -280,6 +310,7 @@ export function startScheduler(): void {
   // ── TIER 3: 1ST OF MONTH 10AM — Revenue Splitting ──────
   cron.schedule('0 10 1 * *', async () => {
     try {
+      if (await isDuplicateRun('revenue_splitter')) return
       logger.info('Running monthly revenue splitting...')
       const result = await runMonthlyRevenueSplitting()
       logger.info(`Revenue splitting: ${result.partners_paid} partners, $${result.total_payouts.toFixed(2)} payouts`)
@@ -296,6 +327,7 @@ export function startScheduler(): void {
   // ── TIER 4: 1ST OF QUARTER 11AM — Market Research ───────
   cron.schedule('0 11 1 1,4,7,10 *', async () => {
     try {
+      if (await isDuplicateRun('market_researcher')) return
       logger.info('Running quarterly market research...')
       const result = await runQuarterlyResearch()
       logger.info(`Market research: ${result.markets_researched} markets, top: ${result.top_market}`)
@@ -307,6 +339,7 @@ export function startScheduler(): void {
   // ── TIER 4: 15TH OF MONTH 11AM — Influencer Outreach ───
   cron.schedule('0 11 15 * *', async () => {
     try {
+      if (await isDuplicateRun('influencer_manager')) return
       logger.info('Running monthly influencer outreach...')
       const result = await runMonthlyInfluencerOutreach()
       logger.info(`Influencer outreach: ${result.influencers_discovered} discovered, ${result.outreach_sent} sent`)
@@ -318,6 +351,7 @@ export function startScheduler(): void {
   // ── TIER 4: EVERY MONDAY 11AM — Localization Update ─────
   cron.schedule('0 11 * * 1', async () => {
     try {
+      if (await isDuplicateRun('localizer')) return
       logger.info('Running weekly localization update...')
       const result = await runWeeklyLocalization()
       logger.info(`Localization: ${result.languages_active} languages, ${result.strings_translated} strings`)
@@ -329,6 +363,7 @@ export function startScheduler(): void {
   // ── TIER 4: 1ST OF QUARTER 12PM — Sustainability Report ─
   cron.schedule('0 12 1 1,4,7,10 *', async () => {
     try {
+      if (await isDuplicateRun('sustainability_tracker')) return
       logger.info('Running quarterly sustainability report...')
       const result = await runQuarterlySustainability()
       logger.info(`Sustainability: ESG score ${result.esg_score}, ${result.improvements_recommended} improvements`)
@@ -340,6 +375,7 @@ export function startScheduler(): void {
   // ── TIER 3: DAILY 4AM — Billing Usage Check ─────────────────
   cron.schedule('0 4 * * *', async () => {
     try {
+      if (await isDuplicateRun('billing_usage_check')) return
       logger.info('Running daily billing usage check...')
       const { rows: tenants } = await pool.query(
         `SELECT DISTINCT operator_email FROM operator_activation_queue WHERE activation_stage = 'activated' LIMIT 50`
@@ -356,6 +392,7 @@ export function startScheduler(): void {
   // ── TIER 3: 1ST OF MONTH 2AM — Monthly Billing ─────────────
   cron.schedule('0 2 1 * *', async () => {
     try {
+      if (await isDuplicateRun('monthly_billing')) return
       logger.info('Running monthly billing...')
       const result = await runMonthlyBilling()
       logger.info(`Monthly billing: ${result.invoices_generated} invoices, $${result.total_revenue.toFixed(2)} revenue`)
@@ -367,6 +404,7 @@ export function startScheduler(): void {
   // ── TIER 2: SUNDAY 3AM — Weekly Doc Regeneration ──────────
   cron.schedule('0 3 * * 0', async () => {
     try {
+      if (await isDuplicateRun('doc_generator')) return
       logger.info('Regenerating documentation...')
       const result = await generateAllDocs()
       logger.info(`Docs regenerated: ${result.api_docs} API docs, ${result.guides} guides, ${result.faqs} FAQs, ${result.help_articles} help articles`)
@@ -378,6 +416,7 @@ export function startScheduler(): void {
   // ── TIER 2: MONDAY 8AM — Weekly Intelligence Report ────────
   cron.schedule('0 8 * * 1', async () => {
     try {
+      if (await isDuplicateRun('intelligence_reporter')) return
       logger.info('Generating weekly intelligence report...')
       const { rows: [metrics] } = await pool.query(`
         SELECT
@@ -407,6 +446,7 @@ export function startScheduler(): void {
   // ── NEWSLETTER MACHINE: Daily 7AM — Generate newsletter draft ─
   cron.schedule('0 7 * * *', async () => {
     try {
+      if (await isDuplicateRun('newsletter_agent')) return
       logger.info('Generating daily newsletter draft...')
       const newsletter = await generateNewsletter()
       logger.info(`Newsletter generated: "${newsletter.subject}" with ${newsletter.story_count} stories`)
@@ -418,6 +458,7 @@ export function startScheduler(): void {
   // ── COMPETITOR AD RESEARCH: Monthly 1st 9AM ──────────────────
   cron.schedule('0 9 1 * *', async () => {
     try {
+      if (await isDuplicateRun('competitor_ad_agent')) return
       logger.info('Running monthly competitor ad research...')
       const result = await runCompetitorAdResearch()
       logger.info(`Competitor research: ${result.competitors_analyzed} analyzed, ${result.concepts_generated} concepts generated`)
@@ -429,6 +470,7 @@ export function startScheduler(): void {
   // ── SEO CONTENT FACTORY: Twice weekly (Tue/Thu 6AM) ──────────
   cron.schedule('0 6 * * 2,4', async () => {
     try {
+      if (await isDuplicateRun('seo_content_factory')) return
       logger.info('Running SEO content factory batch...')
       const result = await generateBatchContent()
       logger.info(`SEO batch complete: ${result.generated} articles generated from ${result.keywords.length} keywords`)
@@ -440,6 +482,7 @@ export function startScheduler(): void {
   // ── ADVANCED SEO RESEARCH: Weekly Wednesday 5AM ──────────────
   cron.schedule('0 5 * * 3', async () => {
     try {
+      if (await isDuplicateRun('seo_research_agent')) return
       logger.info('Running advanced SEO research pipeline...')
       const keywords = [
         'best safari experiences Zimbabwe',

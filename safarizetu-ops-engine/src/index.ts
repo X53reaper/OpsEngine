@@ -90,6 +90,65 @@ async function main() {
       return
     }
 
+    // ── RATE LIMITER ────────────────────────────────────────────
+    const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+    const clientIp = req.socket.remoteAddress || '0.0.0.0'
+    const now = Date.now()
+
+    // Clean up expired entries every 60 seconds
+    if (!(global as any).__rateLimitCleanup) {
+      (global as any).__rateLimitCleanup = true
+      setInterval(() => {
+        for (const [ip, entry] of rateLimitMap.entries()) {
+          if (now > entry.resetAt) rateLimitMap.delete(ip)
+        }
+      }, 60_000).unref()
+    }
+
+    function checkRateLimit(key: string, limit: number, windowMs: number): { allowed: boolean; retryAfter: number } {
+      const entry = rateLimitMap.get(key)
+      if (!entry || now > entry.resetAt) {
+        rateLimitMap.set(key, { count: 1, resetAt: now + windowMs })
+        return { allowed: true, retryAfter: 0 }
+      }
+      entry.count++
+      if (entry.count > limit) {
+        return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) }
+      }
+      return { allowed: true, retryAfter: 0 }
+    }
+
+    // Rate limit API routes
+    if (req.url?.startsWith('/api/')) {
+      const isAgentTrigger = req.url.startsWith('/api/admin/trigger/')
+      const limit = isAgentTrigger ? 10 : 60
+      const windowMs = 60_000
+      const rlKey = isAgentTrigger ? `trigger:${clientIp}` : `api:${clientIp}`
+      const { allowed, retryAfter } = checkRateLimit(rlKey, limit, windowMs)
+      if (!allowed) {
+        res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) })
+        res.end(JSON.stringify({ error: 'Too Many Requests', retryAfter }))
+        return
+      }
+    }
+
+    // ── CSRF PROTECTION ──────────────────────────────────────────
+    const isMutating = req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE' || req.method === 'PATCH'
+    if (isMutating) {
+      const skipCsrf = req.url === '/health' || req.url === '/webhook/safari-zetu'
+      if (!skipCsrf) {
+        const isLocal = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1'
+        if (!isLocal) {
+          const csrfToken = req.headers['x-csrf-token'] as string | undefined
+          if (!csrfToken) {
+            res.writeHead(403, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'CSRF token required' }))
+            return
+          }
+        }
+      }
+    }
+
     // Metrics endpoint
     if (req.url === '/metrics' && req.method === 'GET') {
       const metrics = getMetrics()
