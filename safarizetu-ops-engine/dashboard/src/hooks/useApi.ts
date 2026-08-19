@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import type { Metrics, ApprovalItem, AgentCostData, PipelineItem, LangfuseTrace, Skill } from '../types'
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:3000'
+const API = process.env.REACT_APP_OPS_ENGINE_URL || process.env.REACT_APP_API_URL || 'http://localhost:3000'
 
 async function fetcher<T>(path: string): Promise<T> {
   const { data } = await axios.get(`${API}${path}`)
@@ -81,6 +81,37 @@ export function useLeads() {
     queryKey: ['leads'],
     queryFn: () => fetcher<{ items: PipelineItem[] }>('/api/competitors/landscape'),
     refetchInterval: 60000,
+  })
+}
+
+// ── New Agents ──
+export function useNewsletter() {
+  return useMutation({
+    mutationFn: () => poster('/api/newsletter/generate'),
+  })
+}
+
+export function useCompetitorResearch() {
+  return useMutation({
+    mutationFn: () => poster('/api/competitor/research'),
+  })
+}
+
+export function useSEOResearch() {
+  return useMutation({
+    mutationFn: (keyword: string) => poster('/api/seo/research', { keyword }),
+  })
+}
+
+export function useSEOFactoy() {
+  return useMutation({
+    mutationFn: (keyword: string) => poster('/api/seo/factory', { keyword }),
+  })
+}
+
+export function useTelegramRoute() {
+  return useMutation({
+    mutationFn: (data: { chat_id: string; text: string }) => poster('/api/telegram/route', data),
   })
 }
 

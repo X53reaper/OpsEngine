@@ -100,6 +100,8 @@ services:
     build:
       context: ../dashboard
       dockerfile: Dockerfile
+      args:
+        REACT_APP_OPS_ENGINE_URL: http://ops-engine:3000
     image: safarizetu-ops-dashboard:latest
     container_name: ops_dashboard
     restart: unless-stopped
@@ -107,7 +109,7 @@ services:
       ops-engine:
         condition: service_healthy
     environment:
-      - REACT_APP_OPS_ENGINE_URL=http://localhost:3000
+      - REACT_APP_OPS_ENGINE_URL=http://ops-engine:3000
       - REACT_APP_OPS_API_KEY=${OPS_ENGINE_API_KEY}
       - PORT=3002
     ports:

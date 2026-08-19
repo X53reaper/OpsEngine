@@ -7,7 +7,7 @@ import { Badge, StatusDot } from './components/ui/Badge'
 import { ApprovalQueue } from './components/panels/ApprovalQueue'
 import { AgentCosts } from './components/panels/AgentCosts'
 import { Pipeline } from './components/panels/Pipeline'
-import { useMetrics, useHealth, useApprovalQueue, useSkills } from './hooks/useApi'
+import { useMetrics, useHealth, useApprovalQueue, useSkills, usePartnerships, useNewsletter, useCompetitorResearch } from './hooks/useApi'
 import {
   Users, UserCheck, Handshake, FileCheck, Brain,
   Activity, Boxes, Workflow, Globe
@@ -23,6 +23,9 @@ function Dashboard() {
   const { data: metrics } = useMetrics()
   const { data: approvalData, approve, reject, approveAll } = useApprovalQueue()
   const { data: skillsData } = useSkills()
+  const { data: partnershipData } = usePartnerships()
+  const generateNewsletter = useNewsletter()
+  const runCompetitorResearch = useCompetitorResearch()
 
   const langfuseConnected = health?.langfuse === 'connected'
   const healthy = health?.status === 'ok'
@@ -111,7 +114,22 @@ function Dashboard() {
           gap: 'var(--space-6)',
           marginBottom: 'var(--space-6)',
         }}>
-          <Pipeline title="Competitor Landscape" items={[]} />
+          <Pipeline
+            title="Partnership Pipeline"
+            items={(partnershipData?.items || []).map((p: any) => ({
+              id: p.id || p.company_name,
+              company_name: p.company_name || p.name,
+              status: p.status || 'identified',
+              value: p.partnership_value_proposition || p.notes,
+            }))}
+            statusColors={{
+              identified: { variant: 'info' },
+              researched: { variant: 'warning' },
+              outreach_sent: { variant: 'success' },
+              negotiating: { variant: 'warning' },
+              signed: { variant: 'success' },
+            }}
+          />
           <Pipeline
             title="Agent Skills"
             items={(skillsData?.skills || []).map(s => ({
@@ -121,6 +139,121 @@ function Dashboard() {
             }))}
             statusColors={{ active: { variant: 'success' } }}
           />
+        </div>
+
+        {/* ── New Agents Grid ── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 'var(--space-6)',
+          marginBottom: 'var(--space-6)',
+        }}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Newsletter Machine</CardTitle>
+            </CardHeader>
+            <div style={{ padding: 'var(--space-4)' }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-muted)', marginBottom: 'var(--space-4)' }}>
+                Daily newsletter from safari/travel sources. Runs at 7AM.
+              </p>
+              <button
+                onClick={() => generateNewsletter.mutate()}
+                disabled={generateNewsletter.isPending}
+                style={{
+                  width: '100%',
+                  padding: 'var(--space-3)',
+                  background: generateNewsletter.isPending ? 'var(--bg-muted)' : 'var(--accent)',
+                  color: 'var(--fg-on-accent)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: generateNewsletter.isPending ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontSize: 'var(--text-sm)',
+                }}
+              >
+                {generateNewsletter.isPending ? 'Generating...' : 'Generate Newsletter'}
+              </button>
+              {generateNewsletter.data && (
+                <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--accent)' }}>Last generated:</div>
+                  <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>{generateNewsletter.data.subject}</div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-muted)' }}>{generateNewsletter.data.story_count} stories</div>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Competitor Ad Research</CardTitle>
+            </CardHeader>
+            <div style={{ padding: 'var(--space-4)' }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-muted)', marginBottom: 'var(--space-4)' }}>
+                Analyze competitor ads, generate original concepts. Runs monthly.
+              </p>
+              <button
+                onClick={() => runCompetitorResearch.mutate()}
+                disabled={runCompetitorResearch.isPending}
+                style={{
+                  width: '100%',
+                  padding: 'var(--space-3)',
+                  background: runCompetitorResearch.isPending ? 'var(--bg-muted)' : 'var(--gold)',
+                  color: 'var(--fg-on-accent)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: runCompetitorResearch.isPending ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontSize: 'var(--text-sm)',
+                }}
+              >
+                {runCompetitorResearch.isPending ? 'Researching...' : 'Run Competitor Research'}
+              </button>
+              {runCompetitorResearch.data && (
+                <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--gold)' }}>Last run:</div>
+                  <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>
+                    {runCompetitorResearch.data.competitors_analyzed} competitors, {runCompetitorResearch.data.concepts_generated} concepts
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>SEO Content Factory</CardTitle>
+            </CardHeader>
+            <div style={{ padding: 'var(--space-4)' }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-muted)', marginBottom: 'var(--space-4)' }}>
+                Research → Brief → Write → Humanize pipeline. Runs Tue/Thu.
+              </p>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-muted)' }}>
+                Keywords: Victoria Falls, Hwange, Mana Pools, Gonarezhou, luxury safaris...
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Telegram Orchestrator</CardTitle>
+            </CardHeader>
+            <div style={{ padding: 'var(--space-4)' }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-muted)', marginBottom: 'var(--space-4)' }}>
+                Routes Telegram commands to specialist agents. 9 specialist types.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                {['email', 'creative', 'posting', 'research', 'web', 'bookings', 'content', 'analytics', 'partners'].map(s => (
+                  <span key={s} style={{
+                    padding: '2px 8px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--fg-muted)',
+                  }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          </Card>
         </div>
 
         {/* ── System Status Grid ── */}
