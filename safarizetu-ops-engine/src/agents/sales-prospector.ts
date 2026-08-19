@@ -12,6 +12,7 @@ import {
   ApolloOrganization,
   ApolloSearchFilters
 } from '../services/apollo.service'
+import { verifyEmail, isNeverBounceConfigured } from '../services/neverbounce.service'
 
 // ── SALES PROSPECTING ENGINE ───────────────────────────────────
 // Skills: Apollo.io (lead discovery + enrichment), Browser-Use (scraping)
@@ -361,19 +362,43 @@ Return JSON: {"subject": "...", "body": "..."}`,
 }
 
 // ── SEND OUTREACH ──────────────────────────────────────────────
+const COLD_EMAIL_RATE_LIMIT_MS = 30_000 // 30 seconds between cold sends
+const CAN_SPAM_FOOTER = `
+---
+Safari Zetu | Safari Marketplace
+Plot 45 Samora Machel Ave, Harare, Zimbabwe
+You're receiving this because we believe our platform can help grow your safari business.
+Unsubscribe: https://safarizetu.com/unsubscribe?email=${'{email}'}
+`
+
 export async function sendOutreach(email: OutreachEmail): Promise<boolean> {
   if (!email.to) {
     logger.warn(`No email for lead ${email.lead_id}, skipping`)
     return false
   }
 
+  // NeverBounce verification — skip invalid/disposable/risky emails
+  if (isNeverBounceConfigured()) {
+    const verification = await verifyEmail(email.to)
+    if (verification.status === 'invalid' || verification.status === 'disposable') {
+      logger.warn(`Skipping ${email.to}: NeverBounce says ${verification.status}`)
+      return false
+    }
+    if (verification.status === 'risky') {
+      logger.warn(`Risky email ${email.to} (flags: ${verification.flags.join(', ')}), sending anyway`)
+    }
+  }
+
+  // CAN-SPAM: append footer with address + unsubscribe
+  const bodyWithFooter = `${email.body}\n\n${CAN_SPAM_FOOTER.replace('{email}', encodeURIComponent(email.to))}`
+
   try {
-    await sendEmail(email.to, email.subject, email.body)
-    logger.info(`Outreach sent to ${email.to}`)
-    await storeMemory(email.lead_id, 'conversation_context', 'outreach_sent', new Date().toISOString())
+    await sendEmail(email.to, email.subject, bodyWithFooter)
+    logger.info(`Cold outreach sent to ${email.to}`)
+    await storeMemory(email.lead_id, 'conversation_context', 'cold_outreach_sent', new Date().toISOString())
     return true
   } catch (error) {
-    logger.error(`Failed to send outreach to ${email.to}: ${error}`)
+    logger.error(`Failed to send cold outreach to ${email.to}: ${error}`)
     return false
   }
 }
@@ -408,11 +433,27 @@ export async function runDailyProspecting(): Promise<{
         else llmSourced++
       }
 
+      // ── SCORE LEAD (the bug fix: Apollo leads had score=0 forever) ──
+      lead.lead_score = await scoreLead(lead)
+
+      // Skip LLM-generated leads with fake/placeholder emails
+      if (lead.source.startsWith('llm_') && lead.email) {
+        const fakePatterns = ['@example.com', '@test.com', '@fake.com', '@safari.com']
+        if (fakePatterns.some(p => lead.email?.toLowerCase().includes(p))) {
+          logger.warn(`Skipping LLM lead ${lead.company_name} — email looks fake: ${lead.email}`)
+          continue
+        }
+      }
+
       // Only send outreach to leads with verified emails and high scores
       if (lead.lead_score >= 70 && lead.email) {
         const email = await generateOutreach(lead)
         const sent = await sendOutreach(email)
-        if (sent) outreachSent++
+        if (sent) {
+          outreachSent++
+          // Rate limit: 30s between cold sends to protect domain reputation
+          await new Promise(r => setTimeout(r, COLD_EMAIL_RATE_LIMIT_MS))
+        }
       }
     }
   }
