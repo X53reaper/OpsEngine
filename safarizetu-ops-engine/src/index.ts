@@ -44,13 +44,23 @@ async function main() {
 
   // ── HTTP SERVER (health + webhooks) ─────────────────────────
   const server = createServer(async (req, res) => {
-    // Health check
+    // Health check — live ping to DB
     if (req.url === '/health' && req.method === 'GET') {
-      const dbStatus = isDbConnected() ? 'connected' : 'mock-mode'
-      const healthStatus = isDbConnected() ? 200 : 503
+      let dbStatus = 'mock-mode'
+      let dbOk = false
+      try {
+        if (isDbConnected()) {
+          await pool.query('SELECT 1')
+          dbStatus = 'connected'
+          dbOk = true
+        }
+      } catch {
+        dbStatus = 'error'
+      }
+      const healthStatus = dbOk ? 200 : 503
       res.writeHead(healthStatus, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
-        status: isDbConnected() ? 'ok' : 'degraded',
+        status: dbOk ? 'ok' : 'degraded',
         service: 'safarizetu-ops-engine',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
